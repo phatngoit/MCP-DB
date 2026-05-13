@@ -1,6 +1,6 @@
 {
   "name": "mcp-db-connect",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Universal MCP server for readonly-first Oracle, Microsoft SQL Server, and MongoDB access.",
   "type": "module",
   "bin": {

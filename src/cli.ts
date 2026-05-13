@@ -13,7 +13,7 @@ const program = new Command();
 program
   .name('mcp-db-connect')
   .description('Universal readonly-first MCP server for Oracle, MSSQL, and MongoDB.')
-  .version('0.1.0');
+  .version('0.1.1');
 
 program
   .command('start')
@@ -34,6 +34,8 @@ program
   .option('--host <host>', 'Host to bind.', '127.0.0.1')
   .option('--port <port>', 'Port to bind.', parseIntegerOption, 3000)
   .option('--path <path>', 'MCP HTTP endpoint path.', '/mcp')
+  .option('--api-key <key>', 'Require this API key for HTTP MCP requests.')
+  .option('--api-key-env <name>', 'Read the HTTP MCP API key from an environment variable.')
   .option(
     '--allowed-hosts <hosts>',
     'Comma-separated Host header allowlist for DNS rebinding protection.',
@@ -46,6 +48,8 @@ program
       host: string;
       port: number;
       path: string;
+      apiKey?: string;
+      apiKeyEnv?: string;
       allowedHosts?: string[];
     }) => {
       loadEnv(options.env);
@@ -55,6 +59,7 @@ program
         port: options.port,
         path: normalizeEndpointPath(options.path),
         allowedHosts: options.allowedHosts,
+        apiKey: resolveApiKey(options.apiKey, options.apiKeyEnv),
       });
     },
   );
@@ -149,6 +154,23 @@ function parseCommaList(value: string): string[] {
 
 function normalizeEndpointPath(value: string): string {
   return value.startsWith('/') ? value : `/${value}`;
+}
+
+function resolveApiKey(apiKey: string | undefined, apiKeyEnv: string | undefined): string | undefined {
+  if (apiKey && apiKeyEnv) {
+    throw new Error('Use either --api-key or --api-key-env, not both.');
+  }
+
+  if (!apiKeyEnv) {
+    return apiKey;
+  }
+
+  const value = process.env[apiKeyEnv];
+  if (!value) {
+    throw new Error(`Environment variable ${apiKeyEnv} is not set.`);
+  }
+
+  return value;
 }
 
 async function fileExists(filePath: string): Promise<boolean> {

@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.1.1
+
+- Added optional API key protection for Streamable HTTP MCP requests.
+- Expanded AI client setup, HTTP auth, and integration testing documentation.
+
 ## 0.1.0
 
 - Initial MCP server for Oracle, Microsoft SQL Server, and MongoDB.

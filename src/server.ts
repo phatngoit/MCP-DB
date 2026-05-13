@@ -21,6 +21,7 @@ export interface HttpServerOptions {
   port: number;
   path: string;
   allowedHosts?: string[];
+  apiKey?: string;
 }
 
 export async function startStdioServer(config: AppConfig): Promise<void> {
@@ -59,10 +60,23 @@ export async function startHttpServer(config: AppConfig, options: HttpServerOpti
       name: 'mcp-db-connect',
       transport: 'streamable-http',
       connections: registry.list().length,
+      authRequired: Boolean(options.apiKey),
     });
   });
 
   app.post(options.path, async (req: ExpressRequest, res: ExpressResponse) => {
+    if (options.apiKey && !isAuthorized(req, options.apiKey)) {
+      res.status(401).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32001,
+          message: 'Unauthorized.',
+        },
+        id: null,
+      });
+      return;
+    }
+
     const server = createServer(config, registry);
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
@@ -141,9 +155,23 @@ export async function startHttpServer(config: AppConfig, options: HttpServerOpti
 function createServer(config: AppConfig, registry: ConnectorRegistry): McpServer {
   const server = new McpServer({
     name: 'mcp-db-connect',
-    version: '0.1.0',
+    version: '0.1.1',
   });
 
   registerDbTools(server, registry, config);
   return server;
+}
+
+function isAuthorized(req: ExpressRequest, apiKey: string): boolean {
+  const authorization = req.headers.authorization;
+  if (authorization?.startsWith('Bearer ')) {
+    return authorization.slice('Bearer '.length) === apiKey;
+  }
+
+  const apiKeyHeader = req.headers['x-api-key'];
+  if (Array.isArray(apiKeyHeader)) {
+    return apiKeyHeader.includes(apiKey);
+  }
+
+  return apiKeyHeader === apiKey;
 }

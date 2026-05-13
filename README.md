@@ -23,6 +23,18 @@ This project is designed for AI tools that support the Model Context Protocol. P
 npm install -g mcp-db-connect
 ```
 
+Or run without global install:
+
+```bash
+npx mcp-db-connect start --config ./mcp-db.yml
+```
+
+Until the npm package is published, install directly from GitHub:
+
+```bash
+npm install -g github:phatngoit/MCP-DB
+```
+
 For local development:
 
 ```bash
@@ -56,6 +68,12 @@ Start a Streamable HTTP MCP endpoint:
 
 ```bash
 mcp-db-connect serve-http --config ./mcp-db.yml --host 127.0.0.1 --port 3000 --path /mcp
+```
+
+Require an API key for HTTP MCP requests:
+
+```bash
+mcp-db-connect serve-http --config ./mcp-db.yml --api-key-env MCP_DB_HTTP_API_KEY
 ```
 
 ## Claude Desktop Example
@@ -167,6 +185,7 @@ connections:
 - `mcp-db-connect test-connections --config ./mcp-db.yml`
 - `mcp-db-connect start --config ./mcp-db.yml`
 - `mcp-db-connect serve-http --config ./mcp-db.yml --host 127.0.0.1 --port 3000`
+- `mcp-db-connect serve-http --config ./mcp-db.yml --api-key-env MCP_DB_HTTP_API_KEY`
 
 ## Security Defaults
 
