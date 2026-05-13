@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.1.2
+
+- Fixed npm package metadata for the CLI binary entry before initial npm publish.
+
 ## 0.1.1
 
 - Added optional API key protection for Streamable HTTP MCP requests.
