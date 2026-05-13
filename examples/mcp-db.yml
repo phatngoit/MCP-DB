@@ -1,0 +1,38 @@
+security:
+  defaultMaxRows: 100
+  queryTimeoutMs: 10000
+  blockMultiStatement: true
+  allowWriteOperations: false
+  maskColumns:
+    - password
+    - token
+    - secret
+    - api_key
+  auditLogPath: ./logs/mcp-db-connect.audit.jsonl
+
+connections:
+  oracle_local:
+    type: oracle
+    host: localhost
+    port: 1521
+    serviceName: ORCLPDB1
+    username: app_readonly
+    passwordEnv: ORACLE_PASSWORD
+    mode: readonly
+
+  mssql_local:
+    type: mssql
+    host: localhost
+    port: 1433
+    database: appdb
+    username: sa
+    passwordEnv: MSSQL_PASSWORD
+    encrypt: true
+    trustServerCertificate: true
+    mode: readonly
+
+  mongo_local:
+    type: mongodb
+    uriEnv: MONGODB_URI
+    database: appdb
+    mode: readonly

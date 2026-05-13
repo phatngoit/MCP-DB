@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "db-connect": {
+      "command": "mcp-db-connect",
+      "args": ["start", "--config", "C:/absolute/path/mcp-db.yml"],
+      "env": {
+        "ORACLE_PASSWORD": "change-me",
+        "MSSQL_PASSWORD": "change-me",
+        "MONGODB_URI": "mongodb://localhost:27017"
+      }
+    }
+  }
+}
