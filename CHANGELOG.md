@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.1.3
+
+- Added project-local config and `.env` auto-discovery for simpler AI client setup.
+- Changed `init` to create `mcp-db.local.yml` and `.env.example` by default.
+
 ## 0.1.2
 
 - Fixed npm package metadata for the CLI binary entry before initial npm publish.

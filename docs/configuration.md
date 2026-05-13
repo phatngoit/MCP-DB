@@ -9,6 +9,27 @@ Each connection is named. AI tools will use the name when calling MCP tools.
 
 Secrets can be provided directly, but environment variables are recommended through `passwordEnv` or `uriEnv`.
 
+## Project-local Defaults
+
+When you run commands from a project root, the CLI automatically looks for config in this order:
+
+- `mcp-db.local.yml`
+- `mcp-db.yml`
+- `mcp-db.yaml`
+
+It also automatically loads `.env` from the same project directory. This keeps AI client configs simple:
+
+```bash
+mcp-db-connect start
+```
+
+If your files are elsewhere, pass explicit paths:
+
+```bash
+mcp-db-connect start --project D:/path/to/project
+mcp-db-connect start --config ./config/mcp-db.yml --env ./config/.env
+```
+
 ## Allowlist and Denylist
 
 ```yaml

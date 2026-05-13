@@ -7,6 +7,11 @@ Universal MCP server for readonly-first access to Oracle Database, Microsoft SQL
 
 This project is designed for AI tools that support the Model Context Protocol. Projects can install it, provide a YAML config, and expose safe database tools to their AI client.
 
+By default, commands run from a project directory automatically use:
+
+- `mcp-db.local.yml`, then `mcp-db.yml`, then `mcp-db.yaml`
+- `.env`
+
 ## Features
 
 - Oracle, MSSQL, and MongoDB connectors
@@ -29,7 +34,7 @@ npm install -g mcp-db-connect
 Or run without global install:
 
 ```bash
-npx mcp-db-connect start --config ./mcp-db.yml
+npx mcp-db-connect start
 ```
 
 You can also install directly from GitHub when testing unreleased changes:
@@ -44,7 +49,7 @@ For local development:
 npm install
 npm run build
 node dist/cli.js init
-node dist/cli.js validate-config --config ./mcp-db.yml
+node dist/cli.js validate-config
 ```
 
 ## Quick Start
@@ -52,31 +57,37 @@ node dist/cli.js validate-config --config ./mcp-db.yml
 Create config:
 
 ```bash
-mcp-db-connect init --output ./mcp-db.yml
+mcp-db-connect init
 ```
 
 Start server:
 
 ```bash
-mcp-db-connect start --config ./mcp-db.yml
+mcp-db-connect start
 ```
 
 Test configured databases:
 
 ```bash
-mcp-db-connect test-connections --config ./mcp-db.yml
+mcp-db-connect test-connections
+```
+
+Print AI client setup snippets:
+
+```bash
+mcp-db-connect ai-config
 ```
 
 Start a Streamable HTTP MCP endpoint:
 
 ```bash
-mcp-db-connect serve-http --config ./mcp-db.yml --host 127.0.0.1 --port 3000 --path /mcp
+mcp-db-connect serve-http --host 127.0.0.1 --port 3000 --path /mcp
 ```
 
 Require an API key for HTTP MCP requests:
 
 ```bash
-mcp-db-connect serve-http --config ./mcp-db.yml --api-key-env MCP_DB_HTTP_API_KEY
+mcp-db-connect serve-http --api-key-env MCP_DB_HTTP_API_KEY
 ```
 
 ## Claude Desktop Example
@@ -86,7 +97,7 @@ mcp-db-connect serve-http --config ./mcp-db.yml --api-key-env MCP_DB_HTTP_API_KE
   "mcpServers": {
     "db-connect": {
       "command": "mcp-db-connect",
-      "args": ["start", "--config", "C:/absolute/path/mcp-db.yml"],
+      "args": ["start"],
       "env": {
         "ORACLE_PASSWORD": "change-me",
         "MSSQL_PASSWORD": "change-me",
@@ -106,7 +117,7 @@ Use the same command and args:
   "mcpServers": {
     "db-connect": {
       "command": "mcp-db-connect",
-      "args": ["start", "--config", "/absolute/path/mcp-db.yml"]
+      "args": ["start"]
     }
   }
 }
@@ -184,11 +195,12 @@ connections:
 ## CLI Commands
 
 - `mcp-db-connect init`
-- `mcp-db-connect validate-config --config ./mcp-db.yml`
-- `mcp-db-connect test-connections --config ./mcp-db.yml`
-- `mcp-db-connect start --config ./mcp-db.yml`
-- `mcp-db-connect serve-http --config ./mcp-db.yml --host 127.0.0.1 --port 3000`
-- `mcp-db-connect serve-http --config ./mcp-db.yml --api-key-env MCP_DB_HTTP_API_KEY`
+- `mcp-db-connect ai-config`
+- `mcp-db-connect validate-config`
+- `mcp-db-connect test-connections`
+- `mcp-db-connect start`
+- `mcp-db-connect serve-http --host 127.0.0.1 --port 3000`
+- `mcp-db-connect serve-http --api-key-env MCP_DB_HTTP_API_KEY`
 
 ## Security Defaults
 
