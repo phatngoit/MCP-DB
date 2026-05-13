@@ -60,6 +60,8 @@ Create config:
 mcp-db-connect init
 ```
 
+This creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` with `.env`, `mcp-db.local.yml`, and `logs/`.
+
 Start server:
 
 ```bash

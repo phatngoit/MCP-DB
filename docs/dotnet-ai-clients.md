@@ -14,20 +14,20 @@ mcp-db.local.yml
 .env.example
 ```
 
+It also updates `.gitignore` with:
+
+```gitignore
+.env
+mcp-db.local.yml
+logs/
+```
+
 Create your real `.env` file next to `mcp-db.local.yml`:
 
 ```dotenv
 MSSQL_REPORT_PASSWORD=change-me
 ORACLE_FTMS_PASSWORD=change-me
 MONGODB_LOG_URI=mongodb://user:password@host:27017/fti_ivoice_db
-```
-
-Add local files to `.gitignore`:
-
-```gitignore
-.env
-mcp-db.local.yml
-logs/
 ```
 
 Test from the solution root:

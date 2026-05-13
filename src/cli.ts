@@ -13,7 +13,7 @@ const program = new Command();
 program
   .name('mcp-db-connect')
   .description('Universal readonly-first MCP server for Oracle, MSSQL, and MongoDB.')
-  .version('0.1.3');
+  .version('0.1.4');
 
 program
   .command('start')
@@ -123,7 +123,9 @@ program
   .option('-o, --output <path>', 'Output path.', 'mcp-db.local.yml')
   .option('--project <path>', 'Project directory where files should be created.', process.cwd())
   .option('--env-output <path>', 'Create an example env file at this path.', '.env.example')
-  .action(async (options: { output: string; project: string; envOutput?: string }) => {
+  .option('--no-gitignore', 'Do not update project .gitignore.')
+  .action(
+    async (options: { output: string; project: string; envOutput?: string; gitignore?: boolean }) => {
     const projectDir = resolveProjectDir(options.project);
     const outputPath = path.resolve(projectDir, options.output);
     const exists = await fileExists(outputPath);
@@ -140,7 +142,13 @@ program
         process.stdout.write(`Created ${envOutputPath}\n`);
       }
     }
-  });
+
+    if (options.gitignore !== false) {
+      await ensureGitignore(projectDir, ['.env', 'mcp-db.local.yml', 'logs/']);
+      process.stdout.write(`Updated ${path.join(projectDir, '.gitignore')}\n`);
+    }
+    },
+  );
 
 program
   .command('ai-config')
@@ -234,6 +242,30 @@ async function fileExists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function ensureGitignore(projectDir: string, entries: string[]): Promise<void> {
+  const gitignorePath = path.join(projectDir, '.gitignore');
+  let content = '';
+
+  if (await fileExists(gitignorePath)) {
+    content = await fs.readFile(gitignorePath, 'utf8');
+  }
+
+  const lines = new Set(
+    content
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean),
+  );
+  const missing = entries.filter((entry) => !lines.has(entry));
+  if (missing.length === 0) {
+    return;
+  }
+
+  const prefix = content.length > 0 && !content.endsWith('\n') ? '\n' : '';
+  const section = `${prefix}${content.length > 0 ? '\n' : ''}# MCP DB Connect\n${missing.join('\n')}\n`;
+  await fs.appendFile(gitignorePath, section, 'utf8');
 }
 
 function exampleConfig(): string {

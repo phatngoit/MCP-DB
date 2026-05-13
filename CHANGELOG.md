@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.1.4
+
+- Added automatic `.gitignore` updates during `init` for `.env`, `mcp-db.local.yml`, and `logs/`.
+
 ## 0.1.3
 
 - Added project-local config and `.env` auto-discovery for simpler AI client setup.

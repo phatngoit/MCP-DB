@@ -23,6 +23,8 @@ It also automatically loads `.env` from the same project directory. This keeps A
 mcp-db-connect start
 ```
 
+`mcp-db-connect init` creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` for local secrets and audit logs.
+
 If your files are elsewhere, pass explicit paths:
 
 ```bash
