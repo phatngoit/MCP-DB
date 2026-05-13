@@ -3,6 +3,14 @@
   "version": "0.1.2",
   "description": "Universal MCP server for readonly-first Oracle, Microsoft SQL Server, and MongoDB access.",
   "type": "module",
+  "homepage": "https://github.com/phatngoit/MCP-DB#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/phatngoit/MCP-DB.git"
+  },
+  "bugs": {
+    "url": "https://github.com/phatngoit/MCP-DB/issues"
+  },
   "bin": {
     "mcp-db-connect": "dist/cli.js"
   },
@@ -35,7 +43,7 @@
     "database",
     "ai"
   ],
-  "author": "",
+  "author": "phatngoit",
   "license": "MIT",
   "engines": {
     "node": ">=20.10"

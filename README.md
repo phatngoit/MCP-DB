@@ -1,5 +1,8 @@
 # MCP DB Connect
 
+[![npm version](https://img.shields.io/npm/v/mcp-db-connect.svg)](https://www.npmjs.com/package/mcp-db-connect)
+[![CI](https://github.com/phatngoit/MCP-DB/actions/workflows/ci.yml/badge.svg)](https://github.com/phatngoit/MCP-DB/actions/workflows/ci.yml)
+
 Universal MCP server for readonly-first access to Oracle Database, Microsoft SQL Server, and MongoDB.
 
 This project is designed for AI tools that support the Model Context Protocol. Projects can install it, provide a YAML config, and expose safe database tools to their AI client.
@@ -29,7 +32,7 @@ Or run without global install:
 npx mcp-db-connect start --config ./mcp-db.yml
 ```
 
-Until the npm package is published, install directly from GitHub:
+You can also install directly from GitHub when testing unreleased changes:
 
 ```bash
 npm install -g github:phatngoit/MCP-DB
