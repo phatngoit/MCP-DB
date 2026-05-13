@@ -25,6 +25,19 @@ mcp-db-connect start
 
 `mcp-db-connect init` creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` for local secrets and audit logs.
 
+## Query Output
+
+`db_query`, `db_mongo_find`, and `db_mongo_aggregate` return Markdown tables so fields appear horizontally and values appear in rows underneath:
+
+```text
+Rows: 2
+
+| id | name |
+| --- | --- |
+| 1 | Alice |
+| 2 | Bob |
+```
+
 If your files are elsewhere, pass explicit paths:
 
 ```bash

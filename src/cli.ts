@@ -13,7 +13,7 @@ const program = new Command();
 program
   .name('mcp-db-connect')
   .description('Universal readonly-first MCP server for Oracle, MSSQL, and MongoDB.')
-  .version('0.1.4');
+  .version('0.1.5');
 
 program
   .command('start')

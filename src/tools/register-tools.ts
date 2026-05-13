@@ -10,6 +10,7 @@ import {
   validateSqlQuery,
 } from '../core/security.js';
 import { audit } from '../core/audit.js';
+import { formatQueryResult } from '../core/format.js';
 
 type ToolResponse = Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }>;
 
@@ -94,7 +95,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
         validateSqlQuery(query, config.security, connectionConfig);
         const limit = resolveLimit(config.security, connectionConfig, maxRows);
         const result = await connector.query({ query, params, maxRows: limit });
-        return maskResult(result, config.security);
+        return formatQueryResult(maskResult(result, config.security));
       }),
   );
 
@@ -146,7 +147,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
           sort,
           maxRows: limit,
         });
-        return maskResult(result, config.security);
+        return formatQueryResult(maskResult(result, config.security));
       }),
   );
 
@@ -174,7 +175,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
           pipeline,
           maxRows: limit,
         });
-        return maskResult(result, config.security);
+        return formatQueryResult(maskResult(result, config.security));
       }),
   );
 }
@@ -202,6 +203,6 @@ async function runAudited<T>(
 
 function ok(value: unknown): { content: Array<{ type: 'text'; text: string }> } {
   return {
-    content: [{ type: 'text', text: JSON.stringify(value, null, 2) }],
+    content: [{ type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }],
   };
 }

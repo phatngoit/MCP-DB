@@ -20,6 +20,7 @@ By default, commands run from a project directory automatically use:
 - SQL multi-statement blocking
 - MongoDB `$out` and `$merge` blocking in readonly mode
 - Row limits and query timeouts
+- Markdown table output for query results
 - Schema/table allowlist and denylist
 - Sensitive field masking
 - JSONL audit logs
@@ -193,6 +194,17 @@ connections:
 - `db_explain_query`
 - `db_mongo_find`
 - `db_mongo_aggregate`
+
+Query result tools return tables like:
+
+```text
+Rows: 2
+
+| id | name |
+| --- | --- |
+| 1 | Alice |
+| 2 | Bob |
+```
 
 ## CLI Commands
 

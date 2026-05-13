@@ -155,7 +155,7 @@ export async function startHttpServer(config: AppConfig, options: HttpServerOpti
 function createServer(config: AppConfig, registry: ConnectorRegistry): McpServer {
   const server = new McpServer({
     name: 'mcp-db-connect',
-    version: '0.1.4',
+    version: '0.1.5',
   });
 
   registerDbTools(server, registry, config);
