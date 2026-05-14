@@ -46,7 +46,10 @@ export async function startStdioServer(config: AppConfig): Promise<void> {
   await server.connect(new StdioServerTransport());
 }
 
-export async function startHttpServer(config: AppConfig, options: HttpServerOptions): Promise<void> {
+export async function startHttpServer(
+  config: AppConfig,
+  options: HttpServerOptions,
+): Promise<void> {
   const logger = pino({ level: process.env.LOG_LEVEL ?? 'info' });
   const registry = new ConnectorRegistry(config);
   const app = createMcpExpressApp({
@@ -155,7 +158,7 @@ export async function startHttpServer(config: AppConfig, options: HttpServerOpti
 function createServer(config: AppConfig, registry: ConnectorRegistry): McpServer {
   const server = new McpServer({
     name: 'mcp-db-connect',
-    version: '0.1.7',
+    version: '0.1.8',
   });
 
   registerDbTools(server, registry, config);

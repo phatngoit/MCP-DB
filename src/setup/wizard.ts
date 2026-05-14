@@ -125,7 +125,7 @@ export async function runSetupWizard(options: SetupWizardOptions): Promise<void>
     if (options.updateGitignore) {
       await ensureGitignore(
         projectDir,
-        ['.env', 'mcp-db.local.yml', 'logs/', '.mcp-tools/'],
+        ['node_modules/', '.env', 'mcp-db.local.yml', 'logs/', '.mcp-tools/'],
         result,
       );
     }

@@ -18,6 +18,7 @@ mcp-db.local.yml
 It also updates `.gitignore` with:
 
 ```gitignore
+node_modules/
 .env
 mcp-db.local.yml
 logs/

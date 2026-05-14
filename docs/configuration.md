@@ -27,7 +27,7 @@ It also automatically loads `.env` from the same project directory. This keeps A
 mcp-db-connect start
 ```
 
-`mcp-db-connect setup` runs the interactive wizard, asks which AI clients and DB types to configure, writes real local `.env` values, and updates `.gitignore`.
+`mcp-db-connect setup` runs the interactive wizard, asks which AI clients and DB types to configure, writes real local `.env` values, and updates `.gitignore` with `node_modules/`, local secrets, and generated MCP helper folders.
 
 `mcp-db-connect init` is the non-interactive template command. It creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` for local secrets and audit logs.
 

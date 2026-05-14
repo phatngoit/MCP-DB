@@ -72,7 +72,7 @@ It creates or updates these project-local files:
 ```text
 mcp-db.local.yml       # database connection config
 .env                   # local secrets
-.gitignore             # ignores .env, mcp-db.local.yml, logs/, .mcp-tools/
+.gitignore             # ignores node_modules/, .env, mcp-db.local.yml, logs/, .mcp-tools/
 .mcp.json              # Claude Code project MCP config when selected
 .codex/config.toml     # Codex CLI project config when selected
 .gemini/settings.json  # Gemini CLI project config when selected
@@ -132,7 +132,7 @@ mcp-db-connect ai-config
 mcp-db-connect init
 ```
 
-This creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` with `.env`, `mcp-db.local.yml`, and `logs/`.
+This creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` with `node_modules/`, `.env`, `mcp-db.local.yml`, and `logs/`.
 
 Start a Streamable HTTP MCP endpoint:
 
