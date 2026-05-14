@@ -22,6 +22,9 @@ export interface OracleConnectionConfig extends BaseConnectionConfig {
   username: string;
   password?: string;
   passwordEnv?: string;
+  clientMode?: 'thin' | 'thick';
+  clientLibDir?: string;
+  clientLibDirEnv?: string;
 }
 
 export interface MssqlConnectionConfig extends BaseConnectionConfig {

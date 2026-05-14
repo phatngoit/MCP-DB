@@ -18,7 +18,9 @@ function rowsToMarkdownTable(rows: unknown[]): string {
   }
 
   const objectRows = rows.map((row) =>
-    row && typeof row === 'object' && !Array.isArray(row) ? (row as Record<string, unknown>) : { value: row },
+    row && typeof row === 'object' && !Array.isArray(row)
+      ? (row as Record<string, unknown>)
+      : { value: row },
   );
   const columns = collectColumns(objectRows);
   if (columns.length === 0) {
@@ -28,7 +30,9 @@ function rowsToMarkdownTable(rows: unknown[]): string {
   return [
     `| ${columns.map(escapeMarkdownCell).join(' | ')} |`,
     `| ${columns.map(() => '---').join(' | ')} |`,
-    ...objectRows.map((row) => `| ${columns.map((column) => formatCell(row[column])).join(' | ')} |`),
+    ...objectRows.map(
+      (row) => `| ${columns.map((column) => formatCell(row[column])).join(' | ')} |`,
+    ),
   ].join('\n');
 }
 
@@ -56,9 +60,42 @@ function formatCell(value: unknown): string {
   const text =
     typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
       ? String(value)
-      : JSON.stringify(value);
+      : stringifyComplexValue(value);
 
   return escapeMarkdownCell(truncate(text ?? ''));
+}
+
+function stringifyComplexValue(value: unknown): string {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Buffer.isBuffer(value)) {
+    return value.toString('base64');
+  }
+
+  try {
+    return JSON.stringify(value, circularReferenceReplacer()) ?? String(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function circularReferenceReplacer(): (key: string, value: unknown) => unknown {
+  const seen = new WeakSet<object>();
+
+  return (_key: string, value: unknown) => {
+    if (typeof value !== 'object' || value === null) {
+      return value;
+    }
+
+    if (seen.has(value)) {
+      return '[Circular]';
+    }
+
+    seen.add(value);
+    return value;
+  };
 }
 
 function truncate(value: string): string {

@@ -1,7 +1,13 @@
 declare module 'oracledb' {
+  interface DbType {
+    readonly num: number;
+    readonly name: string;
+  }
+
   export interface ExecuteOptions {
     outFormat?: number;
     maxRows?: number;
+    fetchTypeMap?: Map<DbType, { type: DbType }>;
   }
 
   export interface ExecuteResult<T = Record<string, unknown>> {
@@ -33,7 +39,14 @@ declare module 'oracledb' {
 
   const oracledb: {
     OUT_FORMAT_OBJECT: number;
+    thin: boolean;
+    DB_TYPE_CLOB: DbType;
+    DB_TYPE_NCLOB: DbType;
+    DB_TYPE_VARCHAR: DbType;
+    DB_TYPE_NCHAR: DbType;
+    DB_TYPE_NVARCHAR: DbType;
     createPool(attributes: PoolAttributes): Promise<Pool>;
+    initOracleClient(options?: { libDir?: string }): void;
   };
 
   export default oracledb;

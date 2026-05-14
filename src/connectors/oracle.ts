@@ -11,6 +11,8 @@ import type {
 } from '../types.js';
 import { readSecret } from '../config/load-config.js';
 
+let initializedThickClientLibDir: string | undefined;
+
 export class OracleConnector implements DbConnector {
   readonly type = 'oracle' as const;
   readonly name: string;
@@ -21,117 +23,189 @@ export class OracleConnector implements DbConnector {
   }
 
   async testConnection(): Promise<{ ok: boolean; message: string }> {
-    const connection = await this.getConnection();
-    try {
-      await connection.execute('SELECT 1 FROM DUAL');
-      return { ok: true, message: 'Oracle connection succeeded.' };
-    } finally {
-      await connection.close();
-    }
+    return this.withOracleErrorContext(async () => {
+      const connection = await this.getConnection();
+      try {
+        await connection.execute('SELECT 1 FROM DUAL');
+        return { ok: true, message: `Oracle connection succeeded (${oracleModeLabel()}).` };
+      } finally {
+        await connection.close();
+      }
+    });
   }
 
   async listSchemas(): Promise<string[]> {
-    const connection = await this.getConnection();
-    try {
-      const result = await connection.execute<{ USERNAME: string }>(
-        `SELECT username FROM all_users ORDER BY username`,
-        [],
-        { outFormat: oracledb.OUT_FORMAT_OBJECT },
-      );
-      return (result.rows ?? []).map((row) => row.USERNAME);
-    } finally {
-      await connection.close();
-    }
+    return this.withOracleErrorContext(async () => {
+      const connection = await this.getConnection();
+      try {
+        const result = await connection.execute<{ USERNAME: string }>(
+          `SELECT username FROM all_users ORDER BY username`,
+          [],
+          { outFormat: oracledb.OUT_FORMAT_OBJECT },
+        );
+        return (result.rows ?? []).map((row) => row.USERNAME);
+      } finally {
+        await connection.close();
+      }
+    });
   }
 
   async listTables(schema?: string): Promise<TableInfo[]> {
-    const connection = await this.getConnection();
-    try {
-      const owner = schema?.toUpperCase();
-      const result = await connection.execute<{ OWNER: string; TABLE_NAME: string; TYPE: string }>(
-        `SELECT owner, table_name, 'TABLE' AS type
+    return this.withOracleErrorContext(async () => {
+      const connection = await this.getConnection();
+      try {
+        const owner = schema?.toUpperCase();
+        const result = await connection.execute<{
+          OWNER: string;
+          TABLE_NAME: string;
+          TYPE: string;
+        }>(
+          `SELECT owner, table_name, 'TABLE' AS type
            FROM all_tables
           WHERE (:owner IS NULL OR owner = :owner)
           ORDER BY owner, table_name`,
-        { owner },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT },
-      );
-      return (result.rows ?? []).map((row) => ({
-        schema: row.OWNER,
-        name: row.TABLE_NAME,
-        type: row.TYPE,
-      }));
-    } finally {
-      await connection.close();
-    }
+          { owner },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT },
+        );
+        return (result.rows ?? []).map((row) => ({
+          schema: row.OWNER,
+          name: row.TABLE_NAME,
+          type: row.TYPE,
+        }));
+      } finally {
+        await connection.close();
+      }
+    });
   }
 
   async describeTable(schema: string | undefined, table: string): Promise<TableDescription> {
-    const connection = await this.getConnection();
-    try {
-      const owner = schema?.toUpperCase() ?? this.config.username.toUpperCase();
-      const result = await connection.execute<{
-        COLUMN_NAME: string;
-        DATA_TYPE: string;
-        NULLABLE: string;
-        DATA_DEFAULT: string | null;
-      }>(
-        `SELECT column_name, data_type, nullable, data_default
+    return this.withOracleErrorContext(async () => {
+      const connection = await this.getConnection();
+      try {
+        const owner = schema?.toUpperCase() ?? this.config.username.toUpperCase();
+        const result = await connection.execute<{
+          COLUMN_NAME: string;
+          DATA_TYPE: string;
+          NULLABLE: string;
+          DATA_DEFAULT: string | null;
+        }>(
+          `SELECT column_name, data_type, nullable, data_default
            FROM all_tab_columns
           WHERE owner = :owner AND table_name = :tableName
           ORDER BY column_id`,
-        { owner, tableName: table.toUpperCase() },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT },
-      );
-      return {
-        schema: owner,
-        name: table,
-        columns: (result.rows ?? []).map((row) => ({
-          name: row.COLUMN_NAME,
-          type: row.DATA_TYPE,
-          nullable: row.NULLABLE === 'Y',
-          defaultValue: row.DATA_DEFAULT,
-        })),
-      };
-    } finally {
-      await connection.close();
-    }
+          { owner, tableName: table.toUpperCase() },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT },
+        );
+        return {
+          schema: owner,
+          name: table,
+          columns: (result.rows ?? []).map((row) => ({
+            name: row.COLUMN_NAME,
+            type: row.DATA_TYPE,
+            nullable: row.NULLABLE === 'Y',
+            defaultValue: row.DATA_DEFAULT,
+          })),
+        };
+      } finally {
+        await connection.close();
+      }
+    });
   }
 
   async query(input: QueryInput): Promise<QueryResult> {
-    const connection = await this.getConnection();
-    try {
-      const maxRows = input.maxRows ?? 100;
-      const result = await connection.execute(
-        input.query,
-        input.params ?? [],
-        { outFormat: oracledb.OUT_FORMAT_OBJECT, maxRows },
-      );
-      const rows = (result.rows ?? []) as unknown[];
-      return { rows, rowCount: rows.length, truncated: rows.length >= maxRows };
-    } finally {
-      await connection.close();
-    }
+    return this.withOracleErrorContext(async () => {
+      const connection = await this.getConnection();
+      try {
+        const maxRows = input.maxRows ?? 100;
+        try {
+          const result = await connection.execute(input.query, input.params ?? [], {
+            outFormat: oracledb.OUT_FORMAT_OBJECT,
+            maxRows,
+            fetchTypeMap: lobFetchTypeMap(),
+          });
+          const rows = (result.rows ?? []) as unknown[];
+          return { rows, rowCount: rows.length, truncated: rows.length >= maxRows };
+        } catch (firstError) {
+          if (!isNcharError(firstError)) throw firstError;
+          const fallback = await this.retryQueryWithNcharCast(connection, input, maxRows);
+          if (!fallback) throw firstError;
+          return fallback;
+        }
+      } finally {
+        await connection.close();
+      }
+    });
+  }
+
+  private async retryQueryWithNcharCast(
+    connection: Connection,
+    input: QueryInput,
+    maxRows: number,
+  ): Promise<QueryResult | null> {
+    if (!/^\s*SELECT\b/i.test(input.query)) return null;
+    if (/\bFROM\s*\(/i.test(input.query)) return null;
+
+    const fromMatch = input.query.match(/\bFROM\s+(?:"?([\w$#]+)"?\.)?"?([\w$#]+)"?/i);
+    if (!fromMatch) return null;
+
+    const schema = (fromMatch[1] ?? this.config.username).toUpperCase();
+    const tableName = fromMatch[2].toUpperCase();
+
+    const colResult = await connection.execute<{ COLUMN_NAME: string; DATA_TYPE: string }>(
+      `SELECT column_name, data_type
+       FROM all_tab_columns
+       WHERE owner = :owner AND table_name = :tableName
+       ORDER BY column_id`,
+      { owner: schema, tableName },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
+    );
+
+    if (!colResult.rows?.length) return null;
+
+    const ncharTypes = new Set(['NCHAR', 'NVARCHAR2']);
+    const ncharCols = new Set(
+      colResult.rows.filter((r) => ncharTypes.has(r.DATA_TYPE)).map((r) => r.COLUMN_NAME),
+    );
+    if (!ncharCols.size) return null;
+
+    const rewritten = /SELECT\s+\*/i.test(input.query)
+      ? expandSelectStar(input.query, colResult.rows, ncharCols)
+      : castNcharInSelectClause(input.query, ncharCols);
+
+    if (!rewritten) return null;
+
+    const result = await connection.execute(rewritten, input.params ?? [], {
+      outFormat: oracledb.OUT_FORMAT_OBJECT,
+      maxRows,
+      fetchTypeMap: lobFetchTypeMap(),
+    });
+
+    const rows = (result.rows ?? []) as unknown[];
+    return { rows, rowCount: rows.length, truncated: rows.length >= maxRows };
   }
 
   async explainQuery(input: QueryInput): Promise<ExplainResult> {
-    const connection = await this.getConnection();
-    const statementId = `mcp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    try {
-      await connection.execute(`EXPLAIN PLAN SET STATEMENT_ID = '${statementId}' FOR ${input.query}`);
-      const result = await connection.execute<{ PLAN_TABLE_OUTPUT: string }>(
-        `SELECT plan_table_output
+    return this.withOracleErrorContext(async () => {
+      const connection = await this.getConnection();
+      const statementId = `mcp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      try {
+        await connection.execute(
+          `EXPLAIN PLAN SET STATEMENT_ID = '${statementId}' FOR ${input.query}`,
+        );
+        const result = await connection.execute<{ PLAN_TABLE_OUTPUT: string }>(
+          `SELECT plan_table_output
            FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, :statementId, 'BASIC +PREDICATE'))`,
-        { statementId },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT },
-      );
-      return {
-        format: 'text',
-        plan: (result.rows ?? []).map((row) => row.PLAN_TABLE_OUTPUT),
-      };
-    } finally {
-      await connection.close();
-    }
+          { statementId },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT },
+        );
+        return {
+          format: 'text',
+          plan: (result.rows ?? []).map((row) => row.PLAN_TABLE_OUTPUT),
+        };
+      } finally {
+        await connection.close();
+      }
+    });
   }
 
   async close(): Promise<void> {
@@ -143,6 +217,7 @@ export class OracleConnector implements DbConnector {
 
   private async getConnection(): Promise<Connection> {
     if (!this.pool) {
+      initializeOracleClient(this.config);
       this.pool = await oracledb.createPool({
         user: this.config.username,
         password: readSecret(this.config.password, this.config.passwordEnv),
@@ -164,4 +239,149 @@ export class OracleConnector implements DbConnector {
     }
     throw new Error('Oracle connection requires either serviceName or sid.');
   }
+
+  private async withOracleErrorContext<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      throw withOracleErrorContext(error);
+    }
+  }
+}
+
+function initializeOracleClient(config: OracleConnectionConfig): void {
+  const clientMode = process.env.ORACLE_CLIENT_MODE ?? config.clientMode ?? 'thin';
+  if (clientMode !== 'thick') {
+    return;
+  }
+
+  const libDir = resolveClientLibDir(config);
+  if (initializedThickClientLibDir !== undefined) {
+    if (initializedThickClientLibDir !== libDir) {
+      throw new Error(
+        `Oracle Thick mode was already initialized with ${initializedThickClientLibDir || 'system library path'}, but ${config.name ?? 'oracle'} requested ${libDir || 'system library path'}. Use one Oracle Client libDir for the process.`,
+      );
+    }
+    return;
+  }
+
+  try {
+    oracledb.initOracleClient(libDir ? { libDir } : undefined);
+    initializedThickClientLibDir = libDir;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Oracle Thick mode is required but Oracle Client libraries could not be loaded. ${message}`,
+    );
+  }
+}
+
+function resolveClientLibDir(config: OracleConnectionConfig): string | undefined {
+  if (config.clientLibDir) {
+    return config.clientLibDir;
+  }
+
+  if (config.clientLibDirEnv) {
+    const value = process.env[config.clientLibDirEnv];
+    if (!value) {
+      throw new Error(`Environment variable ${config.clientLibDirEnv} is not set.`);
+    }
+    return value;
+  }
+
+  return undefined;
+}
+
+function oracleModeLabel(): string {
+  return oracledb.thin ? 'Thin mode' : 'Thick mode';
+}
+
+function expandSelectStar(
+  query: string,
+  cols: Array<{ COLUMN_NAME: string; DATA_TYPE: string }>,
+  ncharCols: Set<string>,
+): string {
+  const colList = cols
+    .map((row) => {
+      const col = `"${row.COLUMN_NAME}"`;
+      return ncharCols.has(row.COLUMN_NAME) ? `TO_CHAR(${col}) ${col}` : col;
+    })
+    .join(', ');
+  return query.replace(/SELECT\s+\*/i, `SELECT ${colList}`);
+}
+
+function castNcharInSelectClause(query: string, ncharCols: Set<string>): string | null {
+  const selectMatch = query.match(/^\s*SELECT\s+/i);
+  if (!selectMatch) return null;
+  const selectEnd = selectMatch[0].length;
+
+  // Find FROM at bracket depth 0
+  let depth = 0;
+  let fromIdx = -1;
+  for (let i = selectEnd; i <= query.length - 4; i++) {
+    if (query[i] === '(') { depth++; continue; }
+    if (query[i] === ')') { depth--; continue; }
+    if (depth === 0 && /^FROM\b/i.test(query.slice(i))) { fromIdx = i; break; }
+  }
+  if (fromIdx === -1) return null;
+
+  const colsPart = query.slice(selectEnd, fromIdx);
+  const cols = splitDepth0(colsPart);
+
+  const rewritten = cols.map((col) => {
+    const t = col.trim();
+    // Skip expressions containing function calls or operators other than dot
+    if (t.includes('(') || t.includes('||') || t.includes('|')) return col;
+    // Match: [qualifier.]colname [AS alias | alias]
+    const m = t.match(/^([\w$#"]+\.)?"?([\w$#]+)"?(\s+(?:AS\s+)?"?[\w$#]+"?)?$/i);
+    if (!m) return col;
+    const colName = m[2].toUpperCase();
+    if (!ncharCols.has(colName)) return col;
+    const qualifier = m[1] ?? '';
+    const alias = m[3] ?? ` "${colName}"`;
+    return `TO_CHAR(${qualifier}"${colName}")${alias}`;
+  });
+
+  return query.slice(0, selectEnd) + rewritten.join(',') + query.slice(fromIdx);
+}
+
+function splitDepth0(s: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '(') depth++;
+    else if (s[i] === ')') depth--;
+    else if (s[i] === ',' && depth === 0) {
+      parts.push(s.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(s.slice(start));
+  return parts;
+}
+
+function lobFetchTypeMap() {
+  return new Map([
+    [oracledb.DB_TYPE_CLOB, { type: oracledb.DB_TYPE_VARCHAR }],
+    [oracledb.DB_TYPE_NCLOB, { type: oracledb.DB_TYPE_VARCHAR }],
+  ]);
+}
+
+function isNcharError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('NLS_NCHAR_CHARACTERSET') || message.includes('character set id');
+}
+
+function withOracleErrorContext(error: unknown): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  if (isNcharError(error)) {
+    return new Error(
+      `${message}\n\nThis Oracle database uses an NCHAR character set (e.g. AL16UTF16) that node-oracledb Thin mode cannot handle. ` +
+        `For SELECT * on a single table the connector attempts an automatic NCHAR→VARCHAR2 cast; complex queries require Thick mode. ` +
+        `Configure this Oracle connection with clientMode: thick and set clientLibDir to the Oracle Instant Client directory path.`,
+    );
+  }
+
+  return error instanceof Error ? error : new Error(message);
 }

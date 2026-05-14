@@ -28,4 +28,19 @@ describe('query result formatting', () => {
     expect(output).toContain('A\\|B');
     expect(output).toContain('line 1 line 2');
   });
+
+  it('formats circular object cells without throwing', () => {
+    const value: Record<string, unknown> = { name: 'oracle-object' };
+    value.self = value;
+
+    const output = formatQueryResult({
+      rows: [{ id: 1, payload: value }],
+      rowCount: 1,
+      truncated: false,
+    });
+
+    expect(output).toContain('| id | payload |');
+    expect(output).toContain('oracle-object');
+    expect(output).toContain('[Circular]');
+  });
 });

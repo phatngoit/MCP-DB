@@ -13,6 +13,10 @@ Each connection owns its own network address. MSSQL and Oracle use explicit `hos
 
 You can define multiple connections for the same database type by giving each one a unique name, such as `mssql_report`, `mssql_billing`, `oracle_ftms`, and `mongo_logs`.
 
+Oracle uses the `oracledb` driver in Thin mode. Oracle Instant Client is not required.
+
+Databases with `NCHAR`/`NVARCHAR2` columns and `NLS_NCHAR_CHARACTERSET = AL16UTF16` are handled automatically: the connector detects the character set error and rewrites the query to cast those columns to `VARCHAR2` on the server side before sending results to the client.
+
 ## Project-local Defaults
 
 When you run commands from a project root, the CLI automatically looks for config in this order:

@@ -22,6 +22,9 @@ const oracleConnectionSchema = baseConnectionSchema.extend({
   username: z.string(),
   password: z.string().optional(),
   passwordEnv: z.string().optional(),
+  clientMode: z.enum(['thin', 'thick']).default('thin'),
+  clientLibDir: z.string().optional(),
+  clientLibDirEnv: z.string().optional(),
 });
 
 const mssqlConnectionSchema = baseConnectionSchema.extend({

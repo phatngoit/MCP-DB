@@ -14,7 +14,7 @@ const program = new Command();
 program
   .name('mcp-db-connect')
   .description('Universal readonly-first MCP server for Oracle, MSSQL, and MongoDB.')
-  .version('0.1.8');
+  .version('0.1.10');
 
 program
   .command('start')
@@ -174,7 +174,13 @@ program
       }
 
       if (options.gitignore !== false) {
-        await ensureGitignore(projectDir, ['node_modules/', '.env', 'mcp-db.local.yml', 'logs/']);
+        await ensureGitignore(projectDir, [
+          'node_modules/',
+          '.env',
+          'mcp-db.local.yml',
+          'logs/',
+          '.claude/settings.local.json',
+        ]);
         process.stdout.write(`Updated ${path.join(projectDir, '.gitignore')}\n`);
       }
     },

@@ -23,6 +23,7 @@ node_modules/
 mcp-db.local.yml
 logs/
 .mcp-tools/
+.claude/settings.local.json
 ```
 
 The wizard asks for the DB type and connection details. Each selected DB has its own IP/host and port, so MSSQL, Oracle, and MongoDB do not need to share the same port. A generated `.env` for three internal connections can look like this:
@@ -106,3 +107,18 @@ Ask the AI:
 ```text
 Use db-connect to list database connections, then inspect the MSSQL dbo schema.
 ```
+
+## Avoiding package files in .NET projects
+
+If you do not want `package.json` or `package-lock.json` in a .NET project, install `mcp-db-connect` globally and run the wizard with the global command:
+
+```bash
+npm install -g mcp-db-connect
+mcp-db-connect setup --ai claude
+```
+
+Do not add `package.json` or `package-lock.json` to `.gitignore` by default in mixed repositories; JavaScript projects need those files committed. Use the global install above when the package is only a local AI tool.
+
+## Oracle NCHAR Columns
+
+Oracle Instant Client is not required. If the database uses `NCHAR`/`NVARCHAR2` columns with `AL16UTF16` character set, the connector automatically rewrites the query to cast those columns to `VARCHAR2` server-side, so Thin mode handles them without error.

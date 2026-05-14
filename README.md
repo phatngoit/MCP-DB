@@ -7,6 +7,8 @@ Universal MCP server for readonly-first access to Oracle Database, Microsoft SQL
 
 This project is designed for AI tools that support the Model Context Protocol. Projects can install it, provide a YAML config, and expose safe database tools to their AI client.
 
+Oracle connections use the Node.js `oracledb` Thin mode by default, so Oracle Instant Client is not required for most databases. Some Oracle databases use NCHAR character sets that Thin mode cannot handle; those databases require Oracle Thick mode with Oracle Client libraries.
+
 By default, commands run from a project directory automatically use:
 
 - `mcp-db.local.yml`, then `mcp-db.yml`, then `mcp-db.yaml`
@@ -36,7 +38,7 @@ npm install --save-dev mcp-db-connect
 npx mcp-db-connect setup
 ```
 
-Or install globally:
+For .NET or non-Node projects where you do not want `package.json` and `package-lock.json` created in the project, install globally instead:
 
 ```bash
 npm install -g mcp-db-connect
@@ -72,7 +74,7 @@ It creates or updates these project-local files:
 ```text
 mcp-db.local.yml       # database connection config
 .env                   # local secrets
-.gitignore             # ignores node_modules/, .env, mcp-db.local.yml, logs/, .mcp-tools/
+.gitignore             # ignores node_modules/, .env, mcp-db.local.yml, logs/, .mcp-tools/, .claude/settings.local.json
 .mcp.json              # Claude Code project MCP config when selected
 .codex/config.toml     # Codex CLI project config when selected
 .gemini/settings.json  # Gemini CLI project config when selected
@@ -132,7 +134,7 @@ mcp-db-connect ai-config
 mcp-db-connect init
 ```
 
-This creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` with `node_modules/`, `.env`, `mcp-db.local.yml`, and `logs/`.
+This creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` with `node_modules/`, `.env`, `mcp-db.local.yml`, `logs/`, and `.claude/settings.local.json`.
 
 Start a Streamable HTTP MCP endpoint:
 
@@ -339,6 +341,7 @@ connections:
     serviceName: ORCLPDB1
     username: app_readonly
     passwordEnv: ORACLE_PASSWORD
+    clientMode: thin
     mode: readonly
 
   mssql_local:
@@ -364,6 +367,24 @@ MongoDB stores the selected port inside the URI saved in `.env`, for example:
 ```dotenv
 MONGODB_URI=mongodb://user:password@localhost:27018/appdb
 ```
+
+### Oracle Thin vs Thick Mode
+
+Default Oracle setup uses `clientMode: thin` and does not need Oracle Instant Client:
+
+```yaml
+connections:
+  oracle_local:
+    type: oracle
+    host: localhost
+    port: 1521
+    serviceName: ORCLPDB1
+    username: app_readonly
+    passwordEnv: ORACLE_PASSWORD
+    clientMode: thin
+```
+
+Oracle Instant Client is not required. If the database has `NCHAR`/`NVARCHAR2` columns with `NLS_NCHAR_CHARACTERSET = AL16UTF16`, the connector automatically rewrites the query to cast those columns to `VARCHAR2` server-side so Thin mode can handle them.
 
 ## Tools
 

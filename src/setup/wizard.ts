@@ -125,7 +125,14 @@ export async function runSetupWizard(options: SetupWizardOptions): Promise<void>
     if (options.updateGitignore) {
       await ensureGitignore(
         projectDir,
-        ['node_modules/', '.env', 'mcp-db.local.yml', 'logs/', '.mcp-tools/'],
+        [
+          'node_modules/',
+          '.env',
+          'mcp-db.local.yml',
+          'logs/',
+          '.mcp-tools/',
+          '.claude/settings.local.json',
+        ],
         result,
       );
     }
@@ -206,6 +213,18 @@ async function collectConnections(
           envName(name, 'PASSWORD'),
         );
         const password = await promptText(rl, 'Password saved to .env', 'change-me');
+        const useThickMode = await promptBoolean(
+          rl,
+          'Use Oracle Thick mode for unsupported character sets',
+          false,
+        );
+        const clientLibDir = useThickMode
+          ? await promptRequired(
+              rl,
+              'Path to Oracle Instant Client directory',
+              'C:\\oracle\\instantclient_23_5',
+            )
+          : undefined;
 
         connections[name] = {
           type: 'oracle',
@@ -214,6 +233,8 @@ async function collectConnections(
           serviceName,
           username,
           passwordEnv,
+          clientMode: useThickMode ? 'thick' : 'thin',
+          ...(clientLibDir ? { clientLibDir } : {}),
           mode: 'readonly',
         };
         envEntries.push({ name: passwordEnv, value: password });
