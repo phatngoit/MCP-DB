@@ -7,20 +7,28 @@ import { loadConfig } from './config/load-config.js';
 import { appConfigSchema } from './config/schema.js';
 import { ConnectorRegistry } from './core/registry.js';
 import { startHttpServer, startStdioServer } from './server.js';
+import { runSetupWizard } from './setup/wizard.js';
 
 const program = new Command();
 
 program
   .name('mcp-db-connect')
   .description('Universal readonly-first MCP server for Oracle, MSSQL, and MongoDB.')
-  .version('0.1.5');
+  .version('0.1.7');
 
 program
   .command('start')
   .description('Start the MCP server over stdio.')
-  .option('-c, --config <path>', 'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.')
+  .option(
+    '-c, --config <path>',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+  )
   .option('--env <path>', 'Path to .env file.')
-  .option('--project <path>', 'Project directory used for config and .env discovery.', process.cwd())
+  .option(
+    '--project <path>',
+    'Project directory used for config and .env discovery.',
+    process.cwd(),
+  )
   .action(async (options: { config?: string; env?: string; project: string }) => {
     const projectDir = resolveProjectDir(options.project);
     loadEnv(resolveEnvPath(options.env, projectDir));
@@ -31,9 +39,16 @@ program
 program
   .command('serve-http')
   .description('Start the MCP server over Streamable HTTP.')
-  .option('-c, --config <path>', 'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.')
+  .option(
+    '-c, --config <path>',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+  )
   .option('--env <path>', 'Path to .env file.')
-  .option('--project <path>', 'Project directory used for config and .env discovery.', process.cwd())
+  .option(
+    '--project <path>',
+    'Project directory used for config and .env discovery.',
+    process.cwd(),
+  )
   .option('--host <host>', 'Host to bind.', '127.0.0.1')
   .option('--port <port>', 'Port to bind.', parseIntegerOption, 3000)
   .option('--path <path>', 'MCP HTTP endpoint path.', '/mcp')
@@ -72,7 +87,10 @@ program
 program
   .command('validate-config')
   .description('Validate a config file without starting the MCP server.')
-  .option('-c, --config <path>', 'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.')
+  .option(
+    '-c, --config <path>',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+  )
   .option('--project <path>', 'Project directory used for config discovery.', process.cwd())
   .action(async (options: { config?: string; project: string }) => {
     await loadConfig(await resolveConfigPath(options.config, resolveProjectDir(options.project)));
@@ -82,9 +100,16 @@ program
 program
   .command('test-connections')
   .description('Test every configured database connection.')
-  .option('-c, --config <path>', 'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.')
+  .option(
+    '-c, --config <path>',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+  )
   .option('--env <path>', 'Path to .env file.')
-  .option('--project <path>', 'Project directory used for config and .env discovery.', process.cwd())
+  .option(
+    '--project <path>',
+    'Project directory used for config and .env discovery.',
+    process.cwd(),
+  )
   .action(async (options: { config?: string; env?: string; project: string }) => {
     const projectDir = resolveProjectDir(options.project);
     loadEnv(resolveEnvPath(options.env, projectDir));
@@ -125,28 +150,77 @@ program
   .option('--env-output <path>', 'Create an example env file at this path.', '.env.example')
   .option('--no-gitignore', 'Do not update project .gitignore.')
   .action(
-    async (options: { output: string; project: string; envOutput?: string; gitignore?: boolean }) => {
-    const projectDir = resolveProjectDir(options.project);
-    const outputPath = path.resolve(projectDir, options.output);
-    const exists = await fileExists(outputPath);
-    if (exists) {
-      throw new Error(`${outputPath} already exists.`);
-    }
-    await fs.writeFile(outputPath, exampleConfig(), 'utf8');
-    process.stdout.write(`Created ${outputPath}\n`);
-
-    if (options.envOutput) {
-      const envOutputPath = path.resolve(projectDir, options.envOutput);
-      if (!(await fileExists(envOutputPath))) {
-        await fs.writeFile(envOutputPath, exampleEnv(), 'utf8');
-        process.stdout.write(`Created ${envOutputPath}\n`);
+    async (options: {
+      output: string;
+      project: string;
+      envOutput?: string;
+      gitignore?: boolean;
+    }) => {
+      const projectDir = resolveProjectDir(options.project);
+      const outputPath = path.resolve(projectDir, options.output);
+      const exists = await fileExists(outputPath);
+      if (exists) {
+        throw new Error(`${outputPath} already exists.`);
       }
-    }
+      await fs.writeFile(outputPath, exampleConfig(), 'utf8');
+      process.stdout.write(`Created ${outputPath}\n`);
 
-    if (options.gitignore !== false) {
-      await ensureGitignore(projectDir, ['.env', 'mcp-db.local.yml', 'logs/']);
-      process.stdout.write(`Updated ${path.join(projectDir, '.gitignore')}\n`);
-    }
+      if (options.envOutput) {
+        const envOutputPath = path.resolve(projectDir, options.envOutput);
+        if (!(await fileExists(envOutputPath))) {
+          await fs.writeFile(envOutputPath, exampleEnv(), 'utf8');
+          process.stdout.write(`Created ${envOutputPath}\n`);
+        }
+      }
+
+      if (options.gitignore !== false) {
+        await ensureGitignore(projectDir, ['.env', 'mcp-db.local.yml', 'logs/']);
+        process.stdout.write(`Updated ${path.join(projectDir, '.gitignore')}\n`);
+      }
+    },
+  );
+
+program
+  .command('setup')
+  .description('Run an interactive project setup wizard for AI clients and database connections.')
+  .option('--project <path>', 'Project directory where files should be created.', process.cwd())
+  .option(
+    '--config <path>',
+    'Config file path relative to the project directory.',
+    'mcp-db.local.yml',
+  )
+  .option('--env <path>', 'Env file path relative to the project directory.', '.env')
+  .option(
+    '--ai <clients>',
+    'Comma-separated AI clients: claude,codex,gemini,kimi,generic,all.',
+    parseCommaList,
+  )
+  .option(
+    '--db <databases>',
+    'Comma-separated database types: oracle,mssql,mongodb,all.',
+    parseCommaList,
+  )
+  .option('--force', 'Overwrite existing generated entries where possible.')
+  .option('--no-gitignore', 'Do not update project .gitignore.')
+  .action(
+    async (options: {
+      project: string;
+      config: string;
+      env: string;
+      ai?: string[];
+      db?: string[];
+      force?: boolean;
+      gitignore?: boolean;
+    }) => {
+      await runSetupWizard({
+        projectDir: resolveProjectDir(options.project),
+        configPath: options.config,
+        envPath: options.env,
+        selectedAiClients: options.ai,
+        selectedDatabases: options.db,
+        force: options.force === true,
+        updateGitignore: options.gitignore !== false,
+      });
     },
   );
 
@@ -173,7 +247,10 @@ function resolveProjectDir(projectPath: string): string {
   return path.resolve(projectPath);
 }
 
-async function resolveConfigPath(configPath: string | undefined, projectDir: string): Promise<string> {
+async function resolveConfigPath(
+  configPath: string | undefined,
+  projectDir: string,
+): Promise<string> {
   if (configPath) {
     return path.resolve(projectDir, configPath);
   }
@@ -218,7 +295,10 @@ function normalizeEndpointPath(value: string): string {
   return value.startsWith('/') ? value : `/${value}`;
 }
 
-function resolveApiKey(apiKey: string | undefined, apiKeyEnv: string | undefined): string | undefined {
+function resolveApiKey(
+  apiKey: string | undefined,
+  apiKeyEnv: string | undefined,
+): string | undefined {
   if (apiKey && apiKeyEnv) {
     throw new Error('Use either --api-key or --api-key-env, not both.');
   }
@@ -347,26 +427,48 @@ MONGODB_URI=mongodb://localhost:27017/appdb
 }
 
 function aiConfigSnippets(): string {
-  return `Run these from your project root after creating mcp-db.local.yml and .env.
+  return `Recommended project setup:
+  mcp-db-connect setup
+
+Run these from your project root after creating mcp-db.local.yml and .env.
 
 Claude Code CLI:
-  claude mcp add --transport stdio db-connect --scope local -- mcp-db-connect start
+  claude mcp add --transport stdio db-connect --scope local -- mcp-db-connect start --project . --config ./mcp-db.local.yml --env ./.env
 
-Codex CLI config.toml:
+Codex CLI one-project install:
+  mkdir .\\.mcp-tools\\db-connect
+  npm --prefix .\\.mcp-tools\\db-connect install mcp-db-connect
+
+Codex CLI .codex/config.toml:
   [mcp_servers.db-connect]
-  command = "mcp-db-connect"
-  args = ["start"]
+  command = '.\\.mcp-tools\\db-connect\\node_modules\\.bin\\mcp-db-connect.cmd'
+  args = ["start", "--project", ".", "--config", '.\\mcp-db.local.yml', "--env", '.\\.env']
   enabled = true
+
+  [mcp_servers.db-connect.env]
+  LOG_LEVEL = "silent"
 
 Gemini CLI .gemini/settings.json:
   {
     "mcpServers": {
       "db-connect": {
         "command": "mcp-db-connect",
-        "args": ["start"]
+        "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"]
       }
     }
   }
+
+Kimi CLI .kimi/mcp.json:
+  {
+    "mcpServers": {
+      "db-connect": {
+        "command": "mcp-db-connect",
+        "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"]
+      }
+    }
+  }
+
+  kimi --mcp-config-file .\\.kimi\\mcp.json
 
 The server will use mcp-db.local.yml and .env from the project directory where the AI CLI runs.
 `;

@@ -6,6 +6,14 @@ Most MCP-compatible desktop clients can run this server through stdio.
 
 Run AI tools from your project root. `mcp-db-connect` automatically finds `mcp-db.local.yml` and `.env` in the current project directory.
 
+Recommended setup:
+
+```bash
+mcp-db-connect setup
+```
+
+The setup wizard lets you select Claude Code, Codex CLI, Gemini CLI, Kimi CLI, or generic MCP JSON, then select Oracle, MSSQL, and/or MongoDB connections. Each selected DB asks for its own IP/host and port.
+
 ```bash
 mcp-db-connect start
 ```
@@ -33,23 +41,26 @@ node /absolute/path/MCP-DB/dist/cli.js start
 From your project root:
 
 ```bash
-claude mcp add --transport stdio db-connect --scope local -- mcp-db-connect start
+claude mcp add --transport stdio db-connect --scope local -- mcp-db-connect start --project . --config ./mcp-db.local.yml --env ./.env
 ```
 
 The local MCP entry should now follow the current project instead of using fixed config paths.
 
 ## Codex CLI
 
-Add this once to `C:\Users\PHATNV8\.codex\config.toml`:
+For one project only, add this to the project's Codex config instead of the global Codex config:
 
 ```toml
 [mcp_servers.db-connect]
-command = "mcp-db-connect"
-args = ["start"]
+command = '.\.mcp-tools\db-connect\node_modules\.bin\mcp-db-connect.cmd'
+args = ["start", "--project", ".", "--config", '.\mcp-db.local.yml', "--env", '.\.env']
 enabled = true
+
+[mcp_servers.db-connect.env]
+LOG_LEVEL = "silent"
 ```
 
-Then start Codex from the project root:
+Then start Codex from that project root:
 
 ```bash
 cd D:\PHATNV\SourceCode\YourDotNetProject
@@ -65,13 +76,34 @@ Create or update project-local `.gemini/settings.json`:
   "mcpServers": {
     "db-connect": {
       "command": "mcp-db-connect",
-      "args": ["start"]
+      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"]
     }
   }
 }
 ```
 
 Then start Gemini CLI from the project root.
+
+## Kimi CLI
+
+Create project-local `.kimi/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "db-connect": {
+      "command": "mcp-db-connect",
+      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"]
+    }
+  }
+}
+```
+
+Then start Kimi with:
+
+```bash
+kimi --mcp-config-file .\.kimi\mcp.json
+```
 
 ## Claude Desktop / Cursor / VS Code
 
@@ -82,7 +114,7 @@ Use the same stdio command in your MCP configuration:
   "mcpServers": {
     "db-connect": {
       "command": "mcp-db-connect",
-      "args": ["start"]
+      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"]
     }
   }
 }

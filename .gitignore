@@ -4,6 +4,7 @@ dist/
 .env
 *.log
 logs/
+.mcp-tools/
 coverage/
 test-results/
 .DS_Store

@@ -24,24 +24,71 @@ By default, commands run from a project directory automatically use:
 - Schema/table allowlist and denylist
 - Sensitive field masking
 - JSONL audit logs
-- CLI for init, validation, and stdio server startup
+- Interactive setup wizard for AI clients and database connections
+- CLI for setup, init, validation, connection testing, and stdio/HTTP server startup
 
 ## Install
 
+Install in the project where your AI tool will run:
+
 ```bash
-npm install -g mcp-db-connect
+npm install --save-dev mcp-db-connect
+npx mcp-db-connect setup
 ```
 
-Or run without global install:
+Or install globally:
 
 ```bash
-npx mcp-db-connect start
+npm install -g mcp-db-connect
+mcp-db-connect setup
 ```
 
 You can also install directly from GitHub when testing unreleased changes:
 
 ```bash
 npm install -g github:phatngoit/MCP-DB
+```
+
+### Interactive Setup
+
+The recommended setup command is:
+
+```bash
+mcp-db-connect setup
+```
+
+The wizard asks:
+
+- Which AI clients to configure: Claude Code, Codex CLI, Gemini CLI, Kimi CLI, or generic MCP JSON.
+- Which databases to configure: Oracle, Microsoft SQL Server, MongoDB.
+- Connection details for each selected database: IP/host, port, database/service name, username, and password.
+
+Each selected database connection asks for its own port. For example, MSSQL can use `1433`, Oracle can use `1521`, and MongoDB can use `27017`, but these are only defaults; enter the real port for each DB during setup.
+
+One project can contain any number of named connections. For example, the same project can use two MSSQL connections, two Oracle connections, and two MongoDB connections. During setup, answer `y` when asked `Add another ... connection`.
+
+It creates or updates these project-local files:
+
+```text
+mcp-db.local.yml       # database connection config
+.env                   # local secrets
+.gitignore             # ignores .env, mcp-db.local.yml, logs/, .mcp-tools/
+.mcp.json              # Claude Code project MCP config when selected
+.codex/config.toml     # Codex CLI project config when selected
+.gemini/settings.json  # Gemini CLI project config when selected
+.kimi/mcp.json         # Kimi CLI ad-hoc MCP config when selected
+```
+
+Use non-interactive AI/DB selection when you already know the targets:
+
+```bash
+mcp-db-connect setup --ai claude,codex,gemini,kimi --db mssql,mongodb
+```
+
+Overwrite existing generated entries:
+
+```bash
+mcp-db-connect setup --force
 ```
 
 For local development:
@@ -55,24 +102,22 @@ node dist/cli.js validate-config
 
 ## Quick Start
 
-Create config:
+Run the setup wizard from your application project root:
 
 ```bash
-mcp-db-connect init
+mcp-db-connect setup
 ```
 
-This creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` with `.env`, `mcp-db.local.yml`, and `logs/`.
-
-Start server:
-
-```bash
-mcp-db-connect start
-```
-
-Test configured databases:
+Then test configured databases:
 
 ```bash
 mcp-db-connect test-connections
+```
+
+Start the MCP server manually if you want to test stdio startup:
+
+```bash
+mcp-db-connect start
 ```
 
 Print AI client setup snippets:
@@ -80,6 +125,14 @@ Print AI client setup snippets:
 ```bash
 mcp-db-connect ai-config
 ```
+
+`init` is still available when you only want template files and no wizard:
+
+```bash
+mcp-db-connect init
+```
+
+This creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` with `.env`, `mcp-db.local.yml`, and `logs/`.
 
 Start a Streamable HTTP MCP endpoint:
 
@@ -93,40 +146,141 @@ Require an API key for HTTP MCP requests:
 mcp-db-connect serve-http --api-key-env MCP_DB_HTTP_API_KEY
 ```
 
-## Claude Desktop Example
+## AI Client Examples
+
+All examples assume the AI CLI is started from your application project root.
+
+### Claude Code CLI
+
+Recommended automatic setup:
+
+```bash
+mcp-db-connect setup --ai claude --db mssql
+```
+
+Manual setup with Claude Code:
+
+```bash
+claude mcp add --transport stdio db-connect --scope local -- mcp-db-connect start --project . --config ./mcp-db.local.yml --env ./.env
+```
+
+Project `.mcp.json` shape:
 
 ```json
 {
   "mcpServers": {
     "db-connect": {
       "command": "mcp-db-connect",
-      "args": ["start"],
+      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
       "env": {
-        "ORACLE_PASSWORD": "change-me",
-        "MSSQL_PASSWORD": "change-me",
-        "MONGODB_URI": "mongodb://localhost:27017"
+        "LOG_LEVEL": "silent"
       }
     }
   }
 }
 ```
 
-## Cursor / VS Code MCP Example
+### Codex CLI
 
-Use the same command and args:
+Recommended automatic setup:
+
+```bash
+mcp-db-connect setup --ai codex --db mssql,oracle,mongodb
+npm --prefix .\.mcp-tools\db-connect install
+codex
+```
+
+Project `.codex/config.toml`:
+
+```toml
+[mcp_servers.db-connect]
+command = '.\.mcp-tools\db-connect\node_modules\.bin\mcp-db-connect.cmd'
+args = ["start", "--project", ".", "--config", '.\mcp-db.local.yml', "--env", '.\.env']
+enabled = true
+
+[mcp_servers.db-connect.env]
+LOG_LEVEL = "silent"
+```
+
+The `.mcp-tools/db-connect/package.json` file created by the wizard uses `mcp-db-connect` from npm. Run the install command above once per project.
+
+### Gemini CLI
+
+Recommended automatic setup:
+
+```bash
+mcp-db-connect setup --ai gemini --db mongodb
+gemini
+```
+
+Project `.gemini/settings.json`:
 
 ```json
 {
   "mcpServers": {
     "db-connect": {
       "command": "mcp-db-connect",
-      "args": ["start"]
+      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
+      "env": {
+        "LOG_LEVEL": "silent"
+      }
     }
   }
 }
 ```
 
-## Streamable HTTP Client Example
+### Kimi CLI
+
+Recommended automatic setup:
+
+```bash
+mcp-db-connect setup --ai kimi --db oracle
+kimi --mcp-config-file .\.kimi\mcp.json
+```
+
+Project `.kimi/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "db-connect": {
+      "command": "mcp-db-connect",
+      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
+      "env": {
+        "LOG_LEVEL": "silent"
+      }
+    }
+  }
+}
+```
+
+Kimi CLI can also manage global MCP servers with `kimi mcp add`, but the project-local file above keeps this database MCP scoped to one project.
+
+### Generic MCP JSON
+
+For clients that accept the common MCP JSON format:
+
+```bash
+mcp-db-connect setup --ai generic --db mssql
+```
+
+Use `.mcp-db-connect/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "db-connect": {
+      "command": "mcp-db-connect",
+      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
+      "env": {
+        "LOG_LEVEL": "silent"
+      }
+    }
+  }
+}
+```
+
+## Streamable HTTP Client
 
 Use this endpoint for MCP clients or agents that support Streamable HTTP:
 
@@ -156,6 +310,28 @@ security:
   auditLogPath: ./logs/mcp-db-connect.audit.jsonl
 
 connections:
+  mssql_report:
+    type: mssql
+    host: 172.27.62.7
+    port: 1433
+    database: Internet
+    username: report_reader
+    passwordEnv: MSSQL_REPORT_PASSWORD
+    encrypt: true
+    trustServerCertificate: true
+    mode: readonly
+
+  mssql_write_model:
+    type: mssql
+    host: 172.27.62.8
+    port: 1444
+    database: InternetWrite
+    username: writer_user
+    passwordEnv: MSSQL_WRITE_PASSWORD
+    encrypt: true
+    trustServerCertificate: true
+    mode: readonly
+
   oracle_local:
     type: oracle
     host: localhost
@@ -183,6 +359,12 @@ connections:
     mode: readonly
 ```
 
+MongoDB stores the selected port inside the URI saved in `.env`, for example:
+
+```dotenv
+MONGODB_URI=mongodb://user:password@localhost:27018/appdb
+```
+
 ## Tools
 
 - `db_list_connections`
@@ -208,6 +390,7 @@ Rows: 2
 
 ## CLI Commands
 
+- `mcp-db-connect setup`
 - `mcp-db-connect init`
 - `mcp-db-connect ai-config`
 - `mcp-db-connect validate-config`

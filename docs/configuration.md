@@ -9,6 +9,10 @@ Each connection is named. AI tools will use the name when calling MCP tools.
 
 Secrets can be provided directly, but environment variables are recommended through `passwordEnv` or `uriEnv`.
 
+Each connection owns its own network address. MSSQL and Oracle use explicit `host` and `port` fields. MongoDB stores host and port inside the URI referenced by `uriEnv`.
+
+You can define multiple connections for the same database type by giving each one a unique name, such as `mssql_report`, `mssql_billing`, `oracle_ftms`, and `mongo_logs`.
+
 ## Project-local Defaults
 
 When you run commands from a project root, the CLI automatically looks for config in this order:
@@ -23,7 +27,9 @@ It also automatically loads `.env` from the same project directory. This keeps A
 mcp-db-connect start
 ```
 
-`mcp-db-connect init` creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` for local secrets and audit logs.
+`mcp-db-connect setup` runs the interactive wizard, asks which AI clients and DB types to configure, writes real local `.env` values, and updates `.gitignore`.
+
+`mcp-db-connect init` is the non-interactive template command. It creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` for local secrets and audit logs.
 
 ## Query Output
 

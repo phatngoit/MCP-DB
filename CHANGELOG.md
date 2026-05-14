@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.1.7
+
+- Allowed the interactive setup wizard to add multiple connections for the same database type in one run.
+- Bumped the package version after `0.1.6` was already published to npm.
+
+## 0.1.6
+
+- Added `mcp-db-connect setup`, an interactive wizard for selecting AI clients and database types.
+- Added project-local AI config generation for Claude Code, Codex CLI, Gemini CLI, Kimi CLI, and generic MCP JSON.
+- Clarified per-connection DB port prompts and documentation.
+- Expanded README setup instructions with per-client examples.
+
 ## 0.1.5
 
 - Formatted query, MongoDB find, and MongoDB aggregate results as Markdown tables for easier AI reading.
