@@ -696,8 +696,8 @@ function isInteractiveTerminal(): boolean {
 
 function mcpServerDefinition(): Record<string, unknown> {
   return {
-    command: 'mcp-db-connect',
-    args: ['start', '--project', '.', '--config', './mcp-db.local.yml', '--env', './.env'],
+    command: 'npx',
+    args: ['mcp-db-connect', 'start', '--project', '.', '--config', './mcp-db.local.yml', '--env', './.env'],
     env: {
       LOG_LEVEL: 'silent',
     },

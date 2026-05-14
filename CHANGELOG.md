@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.1.12
+
+- Used `npx` as the command in generated AI client configs so the MCP server starts correctly for both local and global installs.
+- Documented global vs local install differences for Claude Code in README.
+
 ## 0.1.11
 
 - Automatic NCHAR/NVARCHAR2 column cast to VARCHAR2 server-side so Oracle Thin mode handles all SELECT queries without Oracle Instant Client.

@@ -160,13 +160,17 @@ Recommended automatic setup:
 mcp-db-connect setup --ai claude --db mssql
 ```
 
-Manual setup with Claude Code:
+The generated `.mcp.json` uses `npx` so it works whether the package is installed globally or locally.
+
+#### Global install (`npm install -g mcp-db-connect`)
+
+`mcp-db-connect` is in PATH and can be used directly:
 
 ```bash
 claude mcp add --transport stdio db-connect --scope local -- mcp-db-connect start --project . --config ./mcp-db.local.yml --env ./.env
 ```
 
-Project `.mcp.json` shape:
+`.mcp.json`:
 
 ```json
 {
@@ -174,6 +178,30 @@ Project `.mcp.json` shape:
     "db-connect": {
       "command": "mcp-db-connect",
       "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
+      "env": {
+        "LOG_LEVEL": "silent"
+      }
+    }
+  }
+}
+```
+
+#### Local install (`npm install --save-dev mcp-db-connect`)
+
+Use `npx` so Claude Code can find the binary inside `node_modules/.bin`:
+
+```bash
+claude mcp add --transport stdio db-connect --scope local -- npx mcp-db-connect start --project . --config ./mcp-db.local.yml --env ./.env
+```
+
+`.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "db-connect": {
+      "command": "npx",
+      "args": ["mcp-db-connect", "start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
       "env": {
         "LOG_LEVEL": "silent"
       }
@@ -221,8 +249,8 @@ Project `.gemini/settings.json`:
 {
   "mcpServers": {
     "db-connect": {
-      "command": "mcp-db-connect",
-      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
+      "command": "npx",
+      "args": ["mcp-db-connect", "start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
       "env": {
         "LOG_LEVEL": "silent"
       }
@@ -246,8 +274,8 @@ Project `.kimi/mcp.json`:
 {
   "mcpServers": {
     "db-connect": {
-      "command": "mcp-db-connect",
-      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
+      "command": "npx",
+      "args": ["mcp-db-connect", "start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
       "env": {
         "LOG_LEVEL": "silent"
       }
@@ -272,8 +300,8 @@ Use `.mcp-db-connect/mcp.json`:
 {
   "mcpServers": {
     "db-connect": {
-      "command": "mcp-db-connect",
-      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
+      "command": "npx",
+      "args": ["mcp-db-connect", "start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"],
       "env": {
         "LOG_LEVEL": "silent"
       }

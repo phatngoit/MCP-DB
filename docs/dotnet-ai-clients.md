@@ -52,7 +52,7 @@ Print setup snippets:
 mcp-db-connect ai-config
 ```
 
-Claude Code CLI:
+Claude Code CLI (global install):
 
 ```bash
 claude mcp add --transport stdio db-connect --scope local -- mcp-db-connect start --project . --config ./mcp-db.local.yml --env ./.env
@@ -76,8 +76,8 @@ Gemini CLI project-local `.gemini/settings.json`:
 {
   "mcpServers": {
     "db-connect": {
-      "command": "mcp-db-connect",
-      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"]
+      "command": "npx",
+      "args": ["mcp-db-connect", "start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"]
     }
   }
 }
@@ -89,8 +89,8 @@ Kimi CLI project-local `.kimi/mcp.json`:
 {
   "mcpServers": {
     "db-connect": {
-      "command": "mcp-db-connect",
-      "args": ["start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"]
+      "command": "npx",
+      "args": ["mcp-db-connect", "start", "--project", ".", "--config", "./mcp-db.local.yml", "--env", "./.env"]
     }
   }
 }

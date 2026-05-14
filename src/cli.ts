@@ -14,7 +14,7 @@ const program = new Command();
 program
   .name('mcp-db-connect')
   .description('Universal readonly-first MCP server for Oracle, MSSQL, and MongoDB.')
-  .version('0.1.10');
+  .version('0.1.12');
 
 program
   .command('start')
@@ -439,7 +439,7 @@ function aiConfigSnippets(): string {
 Run these from your project root after creating mcp-db.local.yml and .env.
 
 Claude Code CLI:
-  claude mcp add --transport stdio db-connect --scope local -- mcp-db-connect start --project . --config ./mcp-db.local.yml --env ./.env
+  claude mcp add --transport stdio db-connect --scope local -- npx mcp-db-connect start --project . --config ./mcp-db.local.yml --env ./.env
 
 Codex CLI one-project install:
   mkdir .\\.mcp-tools\\db-connect
