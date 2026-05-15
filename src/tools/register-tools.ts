@@ -10,7 +10,7 @@ import {
   validateSqlQuery,
 } from '../core/security.js';
 import { audit } from '../core/audit.js';
-import { formatQueryResult } from '../core/format.js';
+import { formatQueryResult, formatSchemaList, formatTableList, formatTableDescription } from '../core/format.js';
 
 type ToolResponse = Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }>;
 
@@ -34,9 +34,10 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
     'List schemas or databases for a connection.',
     { connection: z.string() },
     async ({ connection }) =>
-      runAudited(config, connection, 'db_list_schemas', 'list_schemas', async () =>
-        registry.get(connection).listSchemas(),
-      ),
+      runAudited(config, connection, 'db_list_schemas', 'list_schemas', async () => {
+        const schemas = await registry.get(connection).listSchemas();
+        return formatSchemaList(schemas);
+      }),
   );
 
   server.tool(
@@ -52,7 +53,8 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
         if (schema) {
           assertAllowedObject(schema, 'schema', connectionConfig);
         }
-        return registry.get(connection).listTables(schema);
+        const tables = await registry.get(connection).listTables(schema);
+        return formatTableList(tables);
       }),
   );
 
@@ -71,7 +73,8 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
           assertAllowedObject(schema, 'schema', connectionConfig);
         }
         assertAllowedObject(table, 'table', connectionConfig);
-        return registry.get(connection).describeTable(schema, table);
+        const desc = await registry.get(connection).describeTable(schema, table);
+        return formatTableDescription(desc);
       }),
   );
 

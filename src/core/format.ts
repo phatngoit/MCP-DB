@@ -1,4 +1,4 @@
-import type { QueryResult } from '../types.js';
+import type { QueryResult, TableInfo, TableDescription } from '../types.js';
 
 const MAX_CELL_LENGTH = 120;
 
@@ -108,4 +108,27 @@ function truncate(value: string): string {
 
 function escapeMarkdownCell(value: string): string {
   return value.replace(/\r?\n/g, ' ').replace(/\|/g, '\\|');
+}
+
+export function formatSchemaList(schemas: string[]): string {
+  if (schemas.length === 0) {
+    return '_No schemas found._';
+  }
+  return rowsToMarkdownTable(schemas.map((s) => ({ schema: s })));
+}
+
+export function formatTableList(tables: TableInfo[]): string {
+  if (tables.length === 0) {
+    return '_No tables found._';
+  }
+  return rowsToMarkdownTable(tables as unknown as Record<string, unknown>[]);
+}
+
+export function formatTableDescription(desc: TableDescription): string {
+  const tableLabel = desc.schema ? `${desc.schema}.${desc.name}` : desc.name;
+  const header = `Table: **${tableLabel}**\n\n`;
+  if (desc.columns.length === 0) {
+    return `${header}_No columns found._`;
+  }
+  return header + rowsToMarkdownTable(desc.columns as unknown as Record<string, unknown>[]);
 }
