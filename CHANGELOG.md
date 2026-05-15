@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.1.14
+
+- Fixed CLI version (`--version`) always showing a stale hardcoded value; now reads dynamically from `package.json`.
+- Fixed MCP server advertised version hardcoded in `McpServer` constructor; now in sync with `package.json`.
+
 ## 0.1.13
 
 - Format all structured data returned to the user as markdown tables with fields as column headers and values in rows below.
