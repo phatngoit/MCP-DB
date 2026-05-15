@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.1.13
+
+- Format all structured data returned to the user as markdown tables with fields as column headers and values in rows below.
+- `db_list_schemas`, `db_list_tables`, and `db_describe_table` now return markdown tables instead of raw JSON.
+
 ## 0.1.12
 
 - Used `npx` as the command in generated AI client configs so the MCP server starts correctly for both local and global installs.
