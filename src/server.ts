@@ -1,5 +1,8 @@
+import { createRequire } from 'node:module';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+
+const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
@@ -158,7 +161,7 @@ export async function startHttpServer(
 function createServer(config: AppConfig, registry: ConnectorRegistry): McpServer {
   const server = new McpServer({
     name: 'mcp-db-connect',
-    version: '0.1.10',
+    version,
   });
 
   registerDbTools(server, registry, config);

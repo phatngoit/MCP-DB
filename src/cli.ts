@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { Command } from 'commander';
+
+const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
 import dotenv from 'dotenv';
 import { loadConfig } from './config/load-config.js';
 import { appConfigSchema } from './config/schema.js';
@@ -14,7 +17,7 @@ const program = new Command();
 program
   .name('mcp-db-connect')
   .description('Universal readonly-first MCP server for Oracle, MSSQL, and MongoDB.')
-  .version('0.1.12');
+  .version(version);
 
 program
   .command('start')
