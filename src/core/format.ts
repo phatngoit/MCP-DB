@@ -126,9 +126,38 @@ export function formatTableList(tables: TableInfo[]): string {
 
 export function formatTableDescription(desc: TableDescription): string {
   const tableLabel = desc.schema ? `${desc.schema}.${desc.name}` : desc.name;
-  const header = `Table: **${tableLabel}**\n\n`;
+  const sections: string[] = [`Table: **${tableLabel}**\n`];
+
   if (desc.columns.length === 0) {
-    return `${header}_No columns found._`;
+    sections.push('_No columns found._');
+    return sections.join('\n');
   }
-  return header + rowsToMarkdownTable(desc.columns as unknown as Record<string, unknown>[]);
+
+  sections.push('**Columns**\n');
+  sections.push(rowsToMarkdownTable(desc.columns as unknown as Record<string, unknown>[]));
+
+  if (desc.primaryKeys?.length) {
+    sections.push(`\n**Primary Keys**\n`);
+    sections.push(desc.primaryKeys.join(', '));
+  }
+
+  if (desc.foreignKeys?.length) {
+    sections.push(`\n**Foreign Keys**\n`);
+    sections.push(rowsToMarkdownTable(desc.foreignKeys as unknown as Record<string, unknown>[]));
+  }
+
+  if (desc.indexes?.length) {
+    sections.push(`\n**Indexes**\n`);
+    sections.push(
+      rowsToMarkdownTable(
+        desc.indexes.map((idx) => ({
+          name: idx.name,
+          columns: idx.columns.join(', '),
+          unique: idx.unique,
+        })) as unknown as Record<string, unknown>[],
+      ),
+    );
+  }
+
+  return sections.join('\n');
 }
