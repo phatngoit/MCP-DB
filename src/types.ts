@@ -78,10 +78,26 @@ export interface ColumnInfo {
   defaultValue?: string | null;
 }
 
+export interface ForeignKeyInfo {
+  column: string;
+  refSchema?: string;
+  refTable: string;
+  refColumn: string;
+}
+
+export interface IndexInfo {
+  name: string;
+  columns: string[];
+  unique: boolean;
+}
+
 export interface TableDescription {
   schema?: string;
   name: string;
   columns: ColumnInfo[];
+  primaryKeys?: string[];
+  foreignKeys?: ForeignKeyInfo[];
+  indexes?: IndexInfo[];
 }
 
 export interface QueryInput {
