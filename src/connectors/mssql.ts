@@ -3,6 +3,8 @@ import type { ConnectionPool } from 'mssql';
 import type {
   DbConnector,
   ExplainResult,
+  ForeignKeyInfo,
+  IndexInfo,
   MssqlConnectionConfig,
   QueryInput,
   QueryResult,
@@ -53,32 +55,107 @@ export class MssqlConnector implements DbConnector {
 
   async describeTable(schema: string | undefined, table: string): Promise<TableDescription> {
     const pool = await this.getPool();
-    const request = pool.request();
-    request.input('schema', sql.NVarChar, schema ?? 'dbo');
-    request.input('table', sql.NVarChar, table);
-    const result = await request.query<{
-      column_name: string;
-      data_type: string;
-      is_nullable: string;
-      column_default: string | null;
-    }>(
-      `SELECT COLUMN_NAME AS column_name,
-              DATA_TYPE AS data_type,
-              IS_NULLABLE AS is_nullable,
-              COLUMN_DEFAULT AS column_default
-         FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = @schema AND TABLE_NAME = @table
-        ORDER BY ORDINAL_POSITION`,
-    );
+    const schemaName = schema ?? 'dbo';
+
+    const [colResult, pkResult, fkResult, idxResult] = await Promise.all([
+      // Columns
+      pool.request()
+        .input('schema', sql.NVarChar, schemaName)
+        .input('table', sql.NVarChar, table)
+        .query<{ column_name: string; data_type: string; is_nullable: string; column_default: string | null }>(
+          `SELECT COLUMN_NAME AS column_name,
+                  DATA_TYPE AS data_type,
+                  IS_NULLABLE AS is_nullable,
+                  COLUMN_DEFAULT AS column_default
+             FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = @schema AND TABLE_NAME = @table
+            ORDER BY ORDINAL_POSITION`,
+        ),
+
+      // Primary Keys
+      pool.request()
+        .input('schema', sql.NVarChar, schemaName)
+        .input('table', sql.NVarChar, table)
+        .query<{ column_name: string }>(
+          `SELECT kcu.COLUMN_NAME AS column_name
+             FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+             JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+               ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+              AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+            WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+              AND tc.TABLE_SCHEMA = @schema AND tc.TABLE_NAME = @table
+            ORDER BY kcu.ORDINAL_POSITION`,
+        ),
+
+      // Foreign Keys
+      pool.request()
+        .input('schema', sql.NVarChar, schemaName)
+        .input('table', sql.NVarChar, table)
+        .query<{ column_name: string; ref_schema: string; ref_table: string; ref_column: string }>(
+          `SELECT kcu.COLUMN_NAME AS column_name,
+                  kcu2.TABLE_SCHEMA AS ref_schema,
+                  kcu2.TABLE_NAME AS ref_table,
+                  kcu2.COLUMN_NAME AS ref_column
+             FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+             JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+               ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+              AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+             JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+               ON tc.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+             JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu2
+               ON rc.UNIQUE_CONSTRAINT_NAME = kcu2.CONSTRAINT_NAME
+              AND rc.UNIQUE_CONSTRAINT_SCHEMA = kcu2.TABLE_SCHEMA
+            WHERE tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
+              AND tc.TABLE_SCHEMA = @schema AND tc.TABLE_NAME = @table`,
+        ),
+
+      // Indexes
+      pool.request()
+        .input('schema', sql.NVarChar, schemaName)
+        .input('table', sql.NVarChar, table)
+        .query<{ index_name: string; column_name: string; is_unique: boolean; key_ordinal: number }>(
+          `SELECT i.name AS index_name,
+                  c.name AS column_name,
+                  i.is_unique,
+                  ic.key_ordinal
+             FROM sys.indexes i
+             JOIN sys.tables t  ON i.object_id = t.object_id
+             JOIN sys.schemas s ON t.schema_id = s.schema_id
+             JOIN sys.index_columns ic
+               ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+             JOIN sys.columns c
+               ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+            WHERE s.name = @schema AND t.name = @table AND i.type > 0
+            ORDER BY i.name, ic.key_ordinal`,
+        ),
+    ]);
+
+    // Aggregate index rows â†’ IndexInfo[]
+    const indexMap = new Map<string, IndexInfo>();
+    for (const row of idxResult.recordset ?? []) {
+      if (!indexMap.has(row.index_name)) {
+        indexMap.set(row.index_name, { name: row.index_name, columns: [], unique: row.is_unique });
+      }
+      indexMap.get(row.index_name)!.columns.push(row.column_name);
+    }
+
     return {
-      schema: schema ?? 'dbo',
+      schema: schemaName,
       name: table,
-      columns: (result.recordset ?? []).map((row) => ({
-        name: row.column_name,
-        type: row.data_type,
-        nullable: row.is_nullable === 'YES',
-        defaultValue: row.column_default,
+      columns: (colResult.recordset ?? []).map((r) => ({
+        name: r.column_name,
+        type: r.data_type,
+        nullable: r.is_nullable === 'YES',
+        defaultValue: r.column_default,
       })),
+      primaryKeys: (pkResult.recordset ?? []).map((r) => r.column_name),
+      foreignKeys: (fkResult.recordset ?? []).map((r) => ({
+        column: r.column_name,
+        refSchema: r.ref_schema,
+        refTable: r.ref_table,
+        refColumn: r.ref_column,
+      })) as ForeignKeyInfo[],
+      indexes: [...indexMap.values()],
     };
   }
 
@@ -98,7 +175,7 @@ export class MssqlConnector implements DbConnector {
   async explainQuery(input: QueryInput): Promise<ExplainResult> {
     const pool = await this.getPool();
     const transaction = new sql.Transaction(pool);
-      await transaction.begin();
+    await transaction.begin();
     try {
       await transaction.request().batch('SET SHOWPLAN_TEXT ON');
       const result = await transaction.request().batch<{ StmtText: string }>(input.query);
