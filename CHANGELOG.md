@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.1.16
+
+- Simplified setup wizard: each database now asks only 5 essential fields (host, port, database/service, username, password).
+- Removed technical prompts that most users do not need to answer: `encrypt`, `trustServerCertificate`, `passwordEnv` for MSSQL; `thick mode`, `clientLibDir`, `passwordEnv` for Oracle; `authSource`, `uriEnv` for MongoDB.
+- Environment variable names are now auto-generated and printed after each connection entry.
+- Setup summary now includes a note to edit `mcp-db.local.yml` for advanced options.
+- Simplified README install section to a clear 3-step flow.
+
 ## 0.1.15
 
 - Fixed Oracle `db_describe_table` to return primary keys, foreign keys, and indexes (now consistent with MSSQL).
