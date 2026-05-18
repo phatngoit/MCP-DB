@@ -170,18 +170,13 @@ async function collectConnections(
           defaultConnectionName(database, index),
           connections,
         );
-        const host = await promptRequired(rl, 'MSSQL IP/host', 'localhost');
-        const port = await promptInteger(rl, 'MSSQL port', 1433);
-        const dbName = await promptRequired(rl, 'Database name', 'appdb');
+        const host = await promptRequired(rl, 'Host', 'localhost');
+        const port = await promptInteger(rl, 'Port', 1433);
+        const dbName = await promptRequired(rl, 'Database', 'appdb');
         const username = await promptRequired(rl, 'Username', 'app_readonly');
-        const passwordEnv = await promptRequired(
-          rl,
-          'Password env variable name',
-          envName(name, 'PASSWORD'),
-        );
-        const password = await promptText(rl, 'Password saved to .env', 'change-me');
-        const encrypt = await promptBoolean(rl, 'Encrypt connection', true);
-        const trustServerCertificate = await promptBoolean(rl, 'Trust server certificate', true);
+        const password = await promptText(rl, 'Password', 'change-me');
+        const passwordEnv = envName(name, 'PASSWORD');
+        output.write(`  → Password saved as ${passwordEnv} in .env\n`);
 
         connections[name] = {
           type: 'mssql',
@@ -190,8 +185,8 @@ async function collectConnections(
           database: dbName,
           username,
           passwordEnv,
-          encrypt,
-          trustServerCertificate,
+          encrypt: true,
+          trustServerCertificate: true,
           mode: 'readonly',
         };
         envEntries.push({ name: passwordEnv, value: password });
@@ -203,28 +198,13 @@ async function collectConnections(
           defaultConnectionName(database, index),
           connections,
         );
-        const host = await promptRequired(rl, 'Oracle IP/host', 'localhost');
-        const port = await promptInteger(rl, 'Oracle listener port', 1521);
+        const host = await promptRequired(rl, 'Host', 'localhost');
+        const port = await promptInteger(rl, 'Port', 1521);
         const serviceName = await promptRequired(rl, 'Service name', 'ORCLPDB1');
         const username = await promptRequired(rl, 'Username', 'app_readonly');
-        const passwordEnv = await promptRequired(
-          rl,
-          'Password env variable name',
-          envName(name, 'PASSWORD'),
-        );
-        const password = await promptText(rl, 'Password saved to .env', 'change-me');
-        const useThickMode = await promptBoolean(
-          rl,
-          'Use Oracle Thick mode for unsupported character sets',
-          false,
-        );
-        const clientLibDir = useThickMode
-          ? await promptRequired(
-              rl,
-              'Path to Oracle Instant Client directory',
-              'C:\\oracle\\instantclient_23_5',
-            )
-          : undefined;
+        const password = await promptText(rl, 'Password', 'change-me');
+        const passwordEnv = envName(name, 'PASSWORD');
+        output.write(`  → Password saved as ${passwordEnv} in .env\n`);
 
         connections[name] = {
           type: 'oracle',
@@ -233,8 +213,7 @@ async function collectConnections(
           serviceName,
           username,
           passwordEnv,
-          clientMode: useThickMode ? 'thick' : 'thin',
-          ...(clientLibDir ? { clientLibDir } : {}),
+          clientMode: 'thin',
           mode: 'readonly',
         };
         envEntries.push({ name: passwordEnv, value: password });
@@ -246,21 +225,15 @@ async function collectConnections(
           defaultConnectionName(database, index),
           connections,
         );
-        const host = await promptRequired(rl, 'MongoDB IP/host', 'localhost');
-        const port = await promptInteger(rl, 'MongoDB port', 27017);
-        const dbName = await promptRequired(rl, 'Database name', 'appdb');
+        const host = await promptRequired(rl, 'Host', 'localhost');
+        const port = await promptInteger(rl, 'Port', 27017);
+        const dbName = await promptRequired(rl, 'Database', 'appdb');
         const username = await promptText(rl, 'Username (blank for no auth)', '');
         const password = username
-          ? await promptText(rl, 'Password saved inside MongoDB URI in .env', '')
+          ? await promptText(rl, 'Password', '')
           : '';
-        const authSource = username
-          ? await promptText(rl, 'authSource query value (blank to omit)', '')
-          : '';
-        const uriEnv = await promptRequired(
-          rl,
-          'MongoDB URI env variable name',
-          envName(name, 'URI'),
-        );
+        const uriEnv = envName(name, 'URI');
+        output.write(`  → Connection URI saved as ${uriEnv} in .env\n`);
 
         connections[name] = {
           type: 'mongodb',
@@ -270,7 +243,7 @@ async function collectConnections(
         };
         envEntries.push({
           name: uriEnv,
-          value: buildMongoUri({ host, port, database: dbName, username, password, authSource }),
+          value: buildMongoUri({ host, port, database: dbName, username, password, authSource: '' }),
         });
       }
 
@@ -806,6 +779,9 @@ function printSummary(projectDir: string, result: SetupResult): void {
 
   output.write(
     '\nRun "mcp-db-connect test-connections" from the project root to verify database access.\n',
+  );
+  output.write(
+    'Edit mcp-db.local.yml to configure advanced options (encrypt, Oracle Thick mode, allowlists, row limits).\n',
   );
 }
 
