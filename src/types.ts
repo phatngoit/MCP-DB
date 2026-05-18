@@ -131,6 +131,18 @@ export interface MongoAggregateInput {
   maxRows?: number;
 }
 
+export interface MongoCountInput {
+  collection: string;
+  filter?: Record<string, unknown>;
+}
+
+export interface MongoIndexInfo {
+  name: string;
+  key: Record<string, unknown>;
+  unique?: boolean;
+  sparse?: boolean;
+}
+
 export interface DbConnector {
   readonly type: ConnectionType;
   readonly name: string;
@@ -148,4 +160,8 @@ export interface MongoDbConnector extends DbConnector {
   describeCollection(collection: string): Promise<TableDescription>;
   find(input: MongoFindInput): Promise<QueryResult>;
   aggregate(input: MongoAggregateInput): Promise<QueryResult>;
+  count(input: MongoCountInput): Promise<number>;
+  getIndexes(collection: string): Promise<MongoIndexInfo[]>;
+  explainFind(input: MongoFindInput): Promise<unknown>;
+  explainAggregate(input: MongoAggregateInput): Promise<unknown>;
 }

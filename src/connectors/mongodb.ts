@@ -2,8 +2,10 @@ import { MongoClient } from 'mongodb';
 import type {
   MongoAggregateInput,
   MongoConnectionConfig,
+  MongoCountInput,
   MongoDbConnector,
   MongoFindInput,
+  MongoIndexInfo,
   QueryInput,
   QueryResult,
   TableDescription,
@@ -89,6 +91,48 @@ export class MongodbConnector implements MongoDbConnector {
       .aggregate(pipeline, { maxTimeMS: this.config.queryTimeoutMs })
       .toArray();
     return { rows, rowCount: rows.length, truncated: rows.length >= maxRows };
+  }
+
+  async count(input: MongoCountInput): Promise<number> {
+    const db = (await this.getClient()).db(this.config.database);
+    return db.collection(input.collection).countDocuments(input.filter ?? {}, {
+      maxTimeMS: this.config.queryTimeoutMs,
+    });
+  }
+
+  async getIndexes(collection: string): Promise<MongoIndexInfo[]> {
+    const db = (await this.getClient()).db(this.config.database);
+    const indexes = await db.collection(collection).indexes();
+    return indexes.map((idx) => ({
+      name: idx.name as string,
+      key: idx.key as Record<string, unknown>,
+      unique: idx.unique as boolean | undefined,
+      sparse: idx.sparse as boolean | undefined,
+    }));
+  }
+
+  async explainFind(input: MongoFindInput): Promise<unknown> {
+    const db = (await this.getClient()).db(this.config.database);
+    const maxRows = input.maxRows ?? 100;
+    return db
+      .collection(input.collection)
+      .find(input.filter ?? {}, {
+        projection: input.projection,
+        maxTimeMS: this.config.queryTimeoutMs,
+      })
+      .sort(input.sort ?? {})
+      .limit(maxRows)
+      .explain('executionStats');
+  }
+
+  async explainAggregate(input: MongoAggregateInput): Promise<unknown> {
+    const db = (await this.getClient()).db(this.config.database);
+    const maxRows = input.maxRows ?? 100;
+    const pipeline = [...input.pipeline, { $limit: maxRows }];
+    return db
+      .collection(input.collection)
+      .aggregate(pipeline, { maxTimeMS: this.config.queryTimeoutMs })
+      .explain('executionStats');
   }
 
   async close(): Promise<void> {

@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## 0.1.15
+
+- Fixed Oracle `db_describe_table` to return primary keys, foreign keys, and indexes (now consistent with MSSQL).
+- Added `db_count` tool for Oracle and MSSQL: counts rows in a table with an optional WHERE clause.
+- Added `db_mongo_count`: counts documents in a MongoDB collection with an optional filter.
+- Added `db_mongo_get_indexes`: lists all indexes for a MongoDB collection.
+- Added `db_mongo_explain_find`: returns an execution plan for a MongoDB find operation.
+- Added `db_mongo_explain_aggregate`: returns an execution plan for a MongoDB aggregate pipeline.
+
 ## 0.1.14
 
 - Fixed CLI version (`--version`) always showing a stale hardcoded value; now reads dynamically from `package.json`.

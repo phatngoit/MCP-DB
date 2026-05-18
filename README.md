@@ -416,15 +416,30 @@ Oracle Instant Client is not required. If the database has `NCHAR`/`NVARCHAR2` c
 
 ## Tools
 
-- `db_list_connections`
-- `db_test_connection`
-- `db_list_schemas`
-- `db_list_tables`
-- `db_describe_table`
-- `db_query`
-- `db_explain_query`
-- `db_mongo_find`
-- `db_mongo_aggregate`
+### SQL (Oracle + MSSQL)
+
+- `db_list_connections` — List configured connections
+- `db_test_connection` — Test a connection
+- `db_list_schemas` — List schemas
+- `db_list_tables` — List tables
+- `db_describe_table` — Describe columns, primary keys, foreign keys, and indexes
+- `db_query` — Run a readonly SQL query
+- `db_explain_query` — Return an execution plan for a SQL query
+- `db_count` — Count rows in a table with an optional WHERE clause
+
+### MongoDB
+
+- `db_list_connections` — List configured connections
+- `db_test_connection` — Test a connection
+- `db_list_schemas` — List databases
+- `db_list_tables` — List collections
+- `db_describe_table` — Sample collection fields
+- `db_mongo_find` — Run a readonly find operation
+- `db_mongo_aggregate` — Run a readonly aggregate pipeline
+- `db_mongo_count` — Count documents with an optional filter
+- `db_mongo_get_indexes` — List indexes for a collection
+- `db_mongo_explain_find` — Return an execution plan for a find operation
+- `db_mongo_explain_aggregate` — Return an execution plan for an aggregate pipeline
 
 Query result tools return tables like:
 

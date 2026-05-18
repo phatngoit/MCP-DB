@@ -3,6 +3,8 @@ import type { Connection, Pool } from 'oracledb';
 import type {
   DbConnector,
   ExplainResult,
+  ForeignKeyInfo,
+  IndexInfo,
   OracleConnectionConfig,
   QueryInput,
   QueryResult,
@@ -83,28 +85,109 @@ export class OracleConnector implements DbConnector {
       const connection = await this.getConnection();
       try {
         const owner = schema?.toUpperCase() ?? this.config.username.toUpperCase();
-        const result = await connection.execute<{
-          COLUMN_NAME: string;
-          DATA_TYPE: string;
-          NULLABLE: string;
-          DATA_DEFAULT: string | null;
-        }>(
-          `SELECT column_name, data_type, nullable, data_default
-           FROM all_tab_columns
-          WHERE owner = :owner AND table_name = :tableName
-          ORDER BY column_id`,
-          { owner, tableName: table.toUpperCase() },
-          { outFormat: oracledb.OUT_FORMAT_OBJECT },
-        );
+        const tableName = table.toUpperCase();
+
+        const [colResult, pkResult, fkResult, idxResult] = await Promise.all([
+          connection.execute<{
+            COLUMN_NAME: string;
+            DATA_TYPE: string;
+            NULLABLE: string;
+            DATA_DEFAULT: string | null;
+          }>(
+            `SELECT column_name, data_type, nullable, data_default
+             FROM all_tab_columns
+            WHERE owner = :owner AND table_name = :tableName
+            ORDER BY column_id`,
+            { owner, tableName },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT },
+          ),
+
+          connection.execute<{ COLUMN_NAME: string }>(
+            `SELECT acc.column_name
+             FROM all_constraints ac
+             JOIN all_cons_columns acc
+               ON ac.constraint_name = acc.constraint_name AND ac.owner = acc.owner
+            WHERE ac.constraint_type = 'P'
+              AND ac.owner = :owner AND ac.table_name = :tableName
+            ORDER BY acc.position`,
+            { owner, tableName },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT },
+          ),
+
+          connection.execute<{
+            COLUMN_NAME: string;
+            REF_SCHEMA: string;
+            REF_TABLE: string;
+            REF_COLUMN: string;
+          }>(
+            `SELECT acc.column_name,
+                    rc.owner AS ref_schema,
+                    rc.table_name AS ref_table,
+                    rcc.column_name AS ref_column
+             FROM all_constraints ac
+             JOIN all_cons_columns acc
+               ON ac.constraint_name = acc.constraint_name AND ac.owner = acc.owner
+             JOIN all_constraints rc
+               ON ac.r_constraint_name = rc.constraint_name AND ac.r_owner = rc.owner
+             JOIN all_cons_columns rcc
+               ON rc.constraint_name = rcc.constraint_name AND rc.owner = rcc.owner
+              AND acc.position = rcc.position
+            WHERE ac.constraint_type = 'R'
+              AND ac.owner = :owner AND ac.table_name = :tableName
+            ORDER BY acc.position`,
+            { owner, tableName },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT },
+          ),
+
+          connection.execute<{
+            INDEX_NAME: string;
+            COLUMN_NAME: string;
+            UNIQUENESS: string;
+            COLUMN_POSITION: number;
+          }>(
+            `SELECT ai.index_name,
+                    aic.column_name,
+                    ai.uniqueness,
+                    aic.column_position
+             FROM all_indexes ai
+             JOIN all_ind_columns aic
+               ON ai.index_name = aic.index_name AND ai.owner = aic.index_owner
+            WHERE ai.owner = :owner AND ai.table_name = :tableName
+            ORDER BY ai.index_name, aic.column_position`,
+            { owner, tableName },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT },
+          ),
+        ]);
+
+        const indexMap = new Map<string, IndexInfo>();
+        for (const row of idxResult.rows ?? []) {
+          if (!indexMap.has(row.INDEX_NAME)) {
+            indexMap.set(row.INDEX_NAME, {
+              name: row.INDEX_NAME,
+              columns: [],
+              unique: row.UNIQUENESS === 'UNIQUE',
+            });
+          }
+          indexMap.get(row.INDEX_NAME)!.columns.push(row.COLUMN_NAME);
+        }
+
         return {
           schema: owner,
           name: table,
-          columns: (result.rows ?? []).map((row) => ({
+          columns: (colResult.rows ?? []).map((row) => ({
             name: row.COLUMN_NAME,
             type: row.DATA_TYPE,
             nullable: row.NULLABLE === 'Y',
             defaultValue: row.DATA_DEFAULT,
           })),
+          primaryKeys: (pkResult.rows ?? []).map((r) => r.COLUMN_NAME),
+          foreignKeys: (fkResult.rows ?? []).map((r) => ({
+            column: r.COLUMN_NAME,
+            refSchema: r.REF_SCHEMA,
+            refTable: r.REF_TABLE,
+            refColumn: r.REF_COLUMN,
+          })) as ForeignKeyInfo[],
+          indexes: [...indexMap.values()],
         };
       } finally {
         await connection.close();

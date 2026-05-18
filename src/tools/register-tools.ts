@@ -124,6 +124,33 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
   );
 
   server.tool(
+    'db_count',
+    'Count rows in a SQL table (Oracle or MSSQL). For MongoDB use db_mongo_count.',
+    {
+      connection: z.string(),
+      table: z.string().describe('Table name.'),
+      schema: z.string().optional().describe('Optional schema name.'),
+      where: z.string().optional().describe('Optional SQL WHERE clause without the WHERE keyword.'),
+    },
+    async ({ connection, table, schema, where }) =>
+      runAudited(config, connection, 'db_count', 'count', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        const connector = registry.get(connection);
+        if (connector.type === 'mongodb') {
+          throw new Error('Use db_mongo_count for MongoDB connections.');
+        }
+        if (schema) {
+          assertAllowedObject(schema, 'schema', connectionConfig);
+        }
+        assertAllowedObject(table, 'table', connectionConfig);
+        const query = buildSqlCountQuery(connector.type, schema, table, where);
+        validateSqlQuery(query, config.security, connectionConfig);
+        const result = await connector.query({ query, maxRows: 1 });
+        return formatQueryResult(result);
+      }),
+  );
+
+  server.tool(
     'db_mongo_find',
     'Run a readonly MongoDB find operation.',
     {
@@ -181,6 +208,106 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
         return formatQueryResult(maskResult(result, config.security));
       }),
   );
+
+  server.tool(
+    'db_mongo_count',
+    'Count documents in a MongoDB collection.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      filter: z.record(z.unknown()).optional().describe('Optional MongoDB filter object.'),
+    },
+    async ({ connection, collection, filter }) =>
+      runAudited(config, connection, 'db_mongo_count', 'count', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'mongodb') {
+          throw new Error('db_mongo_count requires a MongoDB connection.');
+        }
+        const total = await (connector as MongoDbConnector).count({ collection, filter });
+        return `Count: ${total}`;
+      }),
+  );
+
+  server.tool(
+    'db_mongo_get_indexes',
+    'List indexes for a MongoDB collection.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+    },
+    async ({ connection, collection }) =>
+      runAudited(config, connection, 'db_mongo_get_indexes', 'get_indexes', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'mongodb') {
+          throw new Error('db_mongo_get_indexes requires a MongoDB connection.');
+        }
+        const indexes = await (connector as MongoDbConnector).getIndexes(collection);
+        return formatQueryResult({
+          rows: indexes.map((idx) => ({
+            name: idx.name,
+            key: JSON.stringify(idx.key),
+            unique: idx.unique ?? false,
+            sparse: idx.sparse ?? false,
+          })),
+          rowCount: indexes.length,
+          truncated: false,
+        });
+      }),
+  );
+
+  server.tool(
+    'db_mongo_explain_find',
+    'Return an execution plan for a MongoDB find operation.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      filter: z.record(z.unknown()).optional(),
+      projection: z.record(z.unknown()).optional(),
+      sort: z.record(z.union([z.literal(1), z.literal(-1)])).optional(),
+    },
+    async ({ connection, collection, filter, projection, sort }) =>
+      runAudited(config, connection, 'db_mongo_explain_find', 'explain_find', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'mongodb') {
+          throw new Error('db_mongo_explain_find requires a MongoDB connection.');
+        }
+        const plan = await (connector as MongoDbConnector).explainFind({
+          collection,
+          filter,
+          projection,
+          sort,
+        });
+        return JSON.stringify(plan, null, 2);
+      }),
+  );
+
+  server.tool(
+    'db_mongo_explain_aggregate',
+    'Return an execution plan for a MongoDB aggregate pipeline.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      pipeline: z.array(z.record(z.unknown())),
+    },
+    async ({ connection, collection, pipeline }) =>
+      runAudited(config, connection, 'db_mongo_explain_aggregate', 'explain_aggregate', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        validateMongoPipeline(pipeline, config.security, connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'mongodb') {
+          throw new Error('db_mongo_explain_aggregate requires a MongoDB connection.');
+        }
+        const plan = await (connector as MongoDbConnector).explainAggregate({ collection, pipeline });
+        return JSON.stringify(plan, null, 2);
+      }),
+  );
 }
 
 async function runAudited<T>(
@@ -208,4 +335,23 @@ function ok(value: unknown): { content: Array<{ type: 'text'; text: string }> } 
   return {
     content: [{ type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }],
   };
+}
+
+function buildSqlCountQuery(
+  dbType: 'oracle' | 'mssql',
+  schema: string | undefined,
+  table: string,
+  where?: string,
+): string {
+  let from: string;
+  if (dbType === 'mssql') {
+    from = schema ? `[${schema}].[${table}]` : `[${table}]`;
+  } else {
+    const owner = schema?.toUpperCase();
+    const tbl = table.toUpperCase();
+    from = owner ? `"${owner}"."${tbl}"` : `"${tbl}"`;
+  }
+  return where
+    ? `SELECT COUNT(*) AS total FROM ${from} WHERE ${where}`
+    : `SELECT COUNT(*) AS total FROM ${from}`;
 }
