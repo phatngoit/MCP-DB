@@ -478,6 +478,8 @@ Use database accounts with the smallest permissions possible. The MCP layer is a
 
 ## Roadmap
 
-- More schema sampling for MongoDB
+- PostgreSQL connector
+- MySQL / MariaDB connector
+- Configurable sample size for MongoDB `db_describe_table` (currently 20 documents)
 - OpenTelemetry tracing
-- Secrets manager integrations
+- Secrets manager integrations (AWS Secrets Manager, Azure Key Vault, HashiCorp Vault)
