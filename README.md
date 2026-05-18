@@ -31,121 +31,67 @@ By default, commands run from a project directory automatically use:
 
 ## Install
 
-Install in the project where your AI tool will run:
+**1. Install the package**
+
+Node / TypeScript projects (local install):
 
 ```bash
 npm install --save-dev mcp-db-connect
-npx mcp-db-connect setup
 ```
 
-For .NET or non-Node projects where you do not want `package.json` and `package-lock.json` created in the project, install globally instead:
+.NET, Python, or other non-Node projects (global install):
 
 ```bash
 npm install -g mcp-db-connect
-mcp-db-connect setup
 ```
 
-You can also install directly from GitHub when testing unreleased changes:
+**2. Run the setup wizard**
 
 ```bash
-npm install -g github:phatngoit/MCP-DB
+npx mcp-db-connect setup
 ```
 
-### Interactive Setup
+The wizard asks which AI clients and databases to configure, prompts for connection details, and writes all config files automatically.
 
-The recommended setup command is:
+**3. Test your connections**
 
 ```bash
-mcp-db-connect setup
+npx mcp-db-connect test-connections
 ```
 
-The wizard asks:
+That's it — your AI client is now connected to your databases.
 
-- Which AI clients to configure: Claude Code, Codex CLI, Gemini CLI, Kimi CLI, or generic MCP JSON.
-- Which databases to configure: Oracle, Microsoft SQL Server, MongoDB.
-- Connection details for each selected database: IP/host, port, database/service name, username, and password.
-
-Each selected database connection asks for its own port. For example, MSSQL can use `1433`, Oracle can use `1521`, and MongoDB can use `27017`, but these are only defaults; enter the real port for each DB during setup.
-
-One project can contain any number of named connections. For example, the same project can use two MSSQL connections, two Oracle connections, and two MongoDB connections. During setup, answer `y` when asked `Add another ... connection`.
-
-It creates or updates these project-local files:
+### What the wizard creates
 
 ```text
 mcp-db.local.yml       # database connection config
 .env                   # local secrets
-.gitignore             # ignores node_modules/, .env, mcp-db.local.yml, logs/, .mcp-tools/, .claude/settings.local.json
-.mcp.json              # Claude Code project MCP config when selected
-.codex/config.toml     # Codex CLI project config when selected
-.gemini/settings.json  # Gemini CLI project config when selected
-.kimi/mcp.json         # Kimi CLI ad-hoc MCP config when selected
+.gitignore             # keeps secrets and local config out of git
+.mcp.json              # Claude Code MCP config (if selected)
+.codex/config.toml     # Codex CLI config (if selected)
+.gemini/settings.json  # Gemini CLI config (if selected)
+.kimi/mcp.json         # Kimi CLI config (if selected)
 ```
 
-Use non-interactive AI/DB selection when you already know the targets:
+### Other setup options
+
+Skip the wizard with explicit flags:
 
 ```bash
-mcp-db-connect setup --ai claude,codex,gemini,kimi --db mssql,mongodb
+npx mcp-db-connect setup --ai claude,codex --db mssql,mongodb
 ```
 
-Overwrite existing generated entries:
+Overwrite existing config entries:
 
 ```bash
-mcp-db-connect setup --force
+npx mcp-db-connect setup --force
 ```
 
-For local development:
+Start an HTTP MCP endpoint instead of stdio:
 
 ```bash
-npm install
-npm run build
-node dist/cli.js init
-node dist/cli.js validate-config
-```
-
-## Quick Start
-
-Run the setup wizard from your application project root:
-
-```bash
-mcp-db-connect setup
-```
-
-Then test configured databases:
-
-```bash
-mcp-db-connect test-connections
-```
-
-Start the MCP server manually if you want to test stdio startup:
-
-```bash
-mcp-db-connect start
-```
-
-Print AI client setup snippets:
-
-```bash
-mcp-db-connect ai-config
-```
-
-`init` is still available when you only want template files and no wizard:
-
-```bash
-mcp-db-connect init
-```
-
-This creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` with `node_modules/`, `.env`, `mcp-db.local.yml`, `logs/`, and `.claude/settings.local.json`.
-
-Start a Streamable HTTP MCP endpoint:
-
-```bash
-mcp-db-connect serve-http --host 127.0.0.1 --port 3000 --path /mcp
-```
-
-Require an API key for HTTP MCP requests:
-
-```bash
-mcp-db-connect serve-http --api-key-env MCP_DB_HTTP_API_KEY
+npx mcp-db-connect serve-http --host 127.0.0.1 --port 3000
+npx mcp-db-connect serve-http --api-key-env MCP_DB_HTTP_API_KEY
 ```
 
 ## AI Client Examples
