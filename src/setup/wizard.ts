@@ -4,6 +4,11 @@ import { stdin as input, stdout as output } from 'node:process';
 import { createInterface, type Interface } from 'node:readline/promises';
 import YAML from 'yaml';
 import { appConfigSchema } from '../config/schema.js';
+import {
+  parseMongoConnectionString,
+  parseMssqlConnectionString,
+  parseOracleConnectionString,
+} from './connection-string-parser.js';
 
 type AiClient = 'claude' | 'codex' | 'gemini' | 'kimi' | 'generic';
 type DatabaseType = 'oracle' | 'mssql' | 'mongodb';
@@ -69,17 +74,17 @@ const databaseChoices: Choice<DatabaseType>[] = [
   {
     id: 'mssql',
     label: 'Microsoft SQL Server',
-    description: 'Own host, port, database, username, password.',
+    description: 'Paste a connection string.',
   },
   {
     id: 'oracle',
     label: 'Oracle Database',
-    description: 'Own host, listener port, service name, username, password.',
+    description: 'Paste a connection string.',
   },
   {
     id: 'mongodb',
     label: 'MongoDB',
-    description: 'Own host, port, database, username, password or anonymous URI.',
+    description: 'Paste a connection string.',
   },
 ];
 
@@ -170,26 +175,21 @@ async function collectConnections(
           defaultConnectionName(database, index),
           connections,
         );
-        const host = await promptRequired(rl, 'Host', 'localhost');
-        const port = await promptInteger(rl, 'Port', 1433);
-        const dbName = await promptRequired(rl, 'Database', 'appdb');
-        const username = await promptRequired(rl, 'Username', 'app_readonly');
-        const password = await promptText(rl, 'Password', 'change-me');
-        const passwordEnv = envName(name, 'PASSWORD');
-        output.write(`  → Password saved as ${passwordEnv} in .env\n`);
+        const connectionString = await promptConnectionString(
+          rl,
+          'Connection string',
+          'Server=host,1433;Database=db;User Id=user;Password=pass;',
+          parseMssqlConnectionString,
+        );
+        const connectionStringEnv = envName(name, 'CONNECTION_STRING');
+        output.write(`  → Connection string saved as ${connectionStringEnv} in .env\n`);
 
         connections[name] = {
           type: 'mssql',
-          host,
-          port,
-          database: dbName,
-          username,
-          passwordEnv,
-          encrypt: true,
-          trustServerCertificate: true,
+          connectionStringEnv,
           mode: 'readonly',
         };
-        envEntries.push({ name: passwordEnv, value: password });
+        envEntries.push({ name: connectionStringEnv, value: connectionString });
       }
 
       if (database === 'oracle') {
@@ -198,20 +198,21 @@ async function collectConnections(
           defaultConnectionName(database, index),
           connections,
         );
-        const host = await promptRequired(rl, 'Host', 'localhost');
-        const port = await promptInteger(rl, 'Port', 1521);
-        const serviceName = await promptRequired(rl, 'Service name', 'ORCLPDB1');
-        const username = await promptRequired(rl, 'Username', 'app_readonly');
-        const password = await promptText(rl, 'Password', 'change-me');
+        const parsed = await promptConnectionString(
+          rl,
+          'Connection string',
+          'user/password@host:1521/service_name  (or an ODP.NET "Data Source=...;User Id=...;Password=..." string)',
+          parseOracleConnectionString,
+        );
+
         const passwordEnv = envName(name, 'PASSWORD');
+        const password = parsed.password ?? (await promptText(rl, 'Password', 'change-me'));
         output.write(`  → Password saved as ${passwordEnv} in .env\n`);
 
         connections[name] = {
           type: 'oracle',
-          host,
-          port,
-          serviceName,
-          username,
+          connectDescriptor: parsed.connectDescriptor,
+          username: parsed.username,
           passwordEnv,
           clientMode: 'thin',
           mode: 'readonly',
@@ -225,26 +226,22 @@ async function collectConnections(
           defaultConnectionName(database, index),
           connections,
         );
-        const host = await promptRequired(rl, 'Host', 'localhost');
-        const port = await promptInteger(rl, 'Port', 27017);
-        const dbName = await promptRequired(rl, 'Database', 'appdb');
-        const username = await promptText(rl, 'Username (blank for no auth)', '');
-        const password = username
-          ? await promptText(rl, 'Password', '')
-          : '';
+        const parsed = await promptConnectionString(
+          rl,
+          'Connection string',
+          'mongodb://user:password@host:27017/database',
+          parseMongoConnectionString,
+        );
         const uriEnv = envName(name, 'URI');
         output.write(`  → Connection URI saved as ${uriEnv} in .env\n`);
 
         connections[name] = {
           type: 'mongodb',
           uriEnv,
-          database: dbName,
+          database: parsed.database,
           mode: 'readonly',
         };
-        envEntries.push({
-          name: uriEnv,
-          value: buildMongoUri({ host, port, database: dbName, username, password, authSource: '' }),
-        });
+        envEntries.push({ name: uriEnv, value: parsed.uri });
       }
 
       index += 1;
@@ -257,6 +254,22 @@ async function collectConnections(
   }
 
   return { connections, envEntries };
+}
+
+async function promptConnectionString<T>(
+  rl: Interface,
+  label: string,
+  example: string,
+  parse: (value: string) => T | null,
+): Promise<T> {
+  while (true) {
+    const raw = await promptRequired(rl, label);
+    const parsed = parse(raw);
+    if (parsed !== null) {
+      return parsed;
+    }
+    output.write(`Could not parse that connection string. Expected a format like:\n  ${example}\n`);
+  }
 }
 
 async function mergeConfigFile(args: {
@@ -559,17 +572,6 @@ async function promptConnectionName(
   }
 }
 
-async function promptInteger(rl: Interface, label: string, defaultValue: number): Promise<number> {
-  while (true) {
-    const answer = await promptText(rl, label, String(defaultValue));
-    const parsed = Number.parseInt(answer, 10);
-    if (Number.isInteger(parsed) && parsed > 0) {
-      return parsed;
-    }
-    output.write(`${label} must be a positive integer.\n`);
-  }
-}
-
 async function promptBoolean(
   rl: Interface,
   label: string,
@@ -702,22 +704,6 @@ function envName(connectionName: string, suffix: string): string {
     .replace(/[^a-zA-Z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .toUpperCase();
-}
-
-function buildMongoUri(args: {
-  host: string;
-  port: number;
-  database: string;
-  username: string;
-  password: string;
-  authSource: string;
-}): string {
-  const credentials = args.username
-    ? `${encodeURIComponent(args.username)}:${encodeURIComponent(args.password)}@`
-    : '';
-  const database = encodeURIComponent(args.database);
-  const query = args.authSource ? `?authSource=${encodeURIComponent(args.authSource)}` : '';
-  return `mongodb://${credentials}${args.host}:${args.port}/${database}${query}`;
 }
 
 function formatEnvValue(value: string): string {
