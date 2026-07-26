@@ -75,7 +75,7 @@ mcp-db.local.yml     ← local override (tạo bởi wizard)
 | Config loader | `src/config/load-config.ts` | LOW | YAML parse, `readSecret()` helper (env var lookup) |
 | Config schema | `src/config/schema.ts` | LOW | Zod schemas cho AppConfig, SecurityConfig, connection types |
 | Oracle connector | `src/connectors/oracle.ts` | HIGH | Pool mgmt, NCHAR→VARCHAR2 auto-cast, CLOB streaming, explain plan |
-| MSSQL connector | `src/connectors/mssql.ts` | MEDIUM | Pool mgmt, **bug: params bị ignore**, SHOWPLAN_TEXT explain |
+| MSSQL connector | `src/connectors/mssql.ts` | MEDIUM | Pool mgmt, named-param binds (`@p1`, `@p2`, ...), SHOWPLAN_TEXT explain |
 | MongoDB connector | `src/connectors/mongodb.ts` | MEDIUM | find/aggregate, schema infer (sample 20 docs) |
 | Connector registry | `src/core/registry.ts` | MEDIUM | Factory switch, lazy init, `Map<name, DbConnector>` lifecycle |
 | Security guards | `src/core/security.ts` | MEDIUM | validateSqlQuery, assertAllowedObject, maskResult, resolveLimit |

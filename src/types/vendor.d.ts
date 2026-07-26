@@ -68,6 +68,7 @@ declare module 'mssql' {
   }
 
   export class Request {
+    input(name: string, value: unknown): Request;
     input(name: string, type: unknown, value: unknown): Request;
     query<T = Record<string, unknown>>(query: string): Promise<QueryResult<T>>;
     batch<T = Record<string, unknown>>(query: string): Promise<QueryResult<T>>;

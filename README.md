@@ -373,6 +373,8 @@ Oracle Instant Client is not required. If the database has `NCHAR`/`NVARCHAR2` c
 - `db_explain_query` — Return an execution plan for a SQL query
 - `db_count` — Count rows in a table with an optional WHERE clause
 
+`db_query` and `db_explain_query` accept an optional `params` array for bind parameters. Oracle uses positional binds (`:1`, `:2`, ...); MSSQL has no positional syntax, so params are bound as named parameters `@p1`, `@p2`, ... in the same order as the array.
+
 ### MongoDB
 
 - `db_list_connections` — List configured connections

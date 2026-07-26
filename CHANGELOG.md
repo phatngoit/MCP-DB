@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## Unreleased
+
+- Fixed `MssqlConnector.query()` and `explainQuery()` silently ignoring the `params` bind array passed to `db_query`/`db_explain_query`. MSSQL now binds params as named parameters `@p1`, `@p2`, ... in array order (Oracle already worked via positional `:1`, `:2` binds).
+
 ## 0.1.16
 
 - Simplified setup wizard: each database now asks only 5 essential fields (host, port, database/service, username, password).

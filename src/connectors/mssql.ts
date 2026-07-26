@@ -1,5 +1,5 @@
 import sql from 'mssql';
-import type { ConnectionPool } from 'mssql';
+import type { ConnectionPool, Request } from 'mssql';
 import type {
   DbConnector,
   ExplainResult,
@@ -12,6 +12,17 @@ import type {
   TableInfo,
 } from '../types.js';
 import { readSecret } from '../config/load-config.js';
+
+/**
+ * MSSQL has no positional bind syntax, so params are bound as @p1, @p2, ...
+ * (1-indexed) matching their array order; the query text must reference them
+ * by those names.
+ */
+function bindPositionalParams(request: Request, params: unknown[] | undefined): void {
+  (params ?? []).forEach((value, index) => {
+    request.input(`p${index + 1}`, value);
+  });
+}
 
 export class MssqlConnector implements DbConnector {
   readonly type = 'mssql' as const;
@@ -162,7 +173,9 @@ export class MssqlConnector implements DbConnector {
   async query(input: QueryInput): Promise<QueryResult> {
     const pool = await this.getPool();
     const maxRows = input.maxRows ?? 100;
-    const result = await pool.request().query(input.query);
+    const request = pool.request();
+    bindPositionalParams(request, input.params);
+    const result = await request.query(input.query);
     const recordset = result.recordset ?? [];
     const rows = recordset.slice(0, maxRows) as unknown[];
     return {
@@ -178,7 +191,9 @@ export class MssqlConnector implements DbConnector {
     await transaction.begin();
     try {
       await transaction.request().batch('SET SHOWPLAN_TEXT ON');
-      const result = await transaction.request().batch<{ StmtText: string }>(input.query);
+      const request = transaction.request();
+      bindPositionalParams(request, input.params);
+      const result = await request.query<{ StmtText: string }>(input.query);
       await transaction.request().batch('SET SHOWPLAN_TEXT OFF');
       await transaction.rollback();
       return {
