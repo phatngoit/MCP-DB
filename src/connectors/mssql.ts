@@ -216,22 +216,28 @@ export class MssqlConnector implements DbConnector {
 
   private async getPool(): Promise<ConnectionPool> {
     if (!this.pool) {
-      this.pool = await new sql.ConnectionPool({
-        server: this.config.host,
-        port: this.config.port,
-        database: this.config.database,
-        user: this.config.username,
-        password: readSecret(this.config.password, this.config.passwordEnv),
-        requestTimeout: this.config.queryTimeoutMs,
-        options: {
-          encrypt: this.config.encrypt,
-          trustServerCertificate: this.config.trustServerCertificate,
-        },
-        pool: {
-          min: 0,
-          max: 4,
-        },
-      }).connect();
+      const hasConnectionString = Boolean(
+        this.config.connectionString || this.config.connectionStringEnv,
+      );
+      const poolConfig = hasConnectionString
+        ? readSecret(this.config.connectionString, this.config.connectionStringEnv)
+        : {
+            server: this.config.host,
+            port: this.config.port,
+            database: this.config.database,
+            user: this.config.username,
+            password: readSecret(this.config.password, this.config.passwordEnv),
+            requestTimeout: this.config.queryTimeoutMs,
+            options: {
+              encrypt: this.config.encrypt,
+              trustServerCertificate: this.config.trustServerCertificate,
+            },
+            pool: {
+              min: 0,
+              max: 4,
+            },
+          };
+      this.pool = await new sql.ConnectionPool(poolConfig).connect();
     }
     return this.pool;
   }

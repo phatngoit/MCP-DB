@@ -314,13 +314,16 @@ export class OracleConnector implements DbConnector {
   }
 
   private connectString(): string {
-    if (this.config.serviceName) {
+    if (this.config.connectDescriptor) {
+      return this.config.connectDescriptor;
+    }
+    if (this.config.host && this.config.serviceName) {
       return `${this.config.host}:${this.config.port}/${this.config.serviceName}`;
     }
-    if (this.config.sid) {
+    if (this.config.host && this.config.sid) {
       return `${this.config.host}:${this.config.port}:${this.config.sid}`;
     }
-    throw new Error('Oracle connection requires either serviceName or sid.');
+    throw new Error('Oracle connection requires either connectDescriptor, or host with serviceName/sid.');
   }
 
   private async withOracleErrorContext<T>(operation: () => Promise<T>): Promise<T> {
