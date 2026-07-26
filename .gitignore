@@ -10,3 +10,4 @@ test-results/
 .DS_Store
 mcp-db.local.yml
 .claude/settings.local.json
+.superpowers/
