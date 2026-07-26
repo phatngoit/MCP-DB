@@ -51,7 +51,7 @@ npm install -g mcp-db-connect
 npx mcp-db-connect setup
 ```
 
-The wizard asks which AI clients and databases to configure, prompts for connection details, and writes all config files automatically.
+The wizard asks which AI clients and databases to configure, then asks for one connection string per database (the same string your DB host, hosting provider, or existing app config already gives you) and writes all config files automatically.
 
 **3. Test your connections**
 
@@ -359,6 +359,27 @@ connections:
 ```
 
 Oracle Instant Client is not required. If the database has `NCHAR`/`NVARCHAR2` columns with `NLS_NCHAR_CHARACTERSET = AL16UTF16`, the connector automatically rewrites the query to cast those columns to `VARCHAR2` server-side so Thin mode can handle them.
+
+### Connection strings instead of individual fields
+
+Oracle and MSSQL also accept a raw connection string instead of `host`/`port`/`database`/`username`:
+
+```yaml
+connections:
+  mssql_from_string:
+    type: mssql
+    connectionStringEnv: MSSQL_FROM_STRING_CONNECTION_STRING
+    mode: readonly
+
+  oracle_from_string:
+    type: oracle
+    connectDescriptor: (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=10.20.30.15)(PORT=1521)))(CONNECT_DATA=(SERVER=POOLED)(SERVICE_NAME=DEMOPDB1)))
+    username: demo_ora_user
+    passwordEnv: ORACLE_FROM_STRING_PASSWORD
+    mode: readonly
+```
+
+`connectionStringEnv` points to a full ADO/tedious connection string in `.env` (same convention as MongoDB's `uriEnv`). `connectDescriptor` holds an Oracle TNS connect descriptor or Easy Connect string and is not secret — only the password goes in `.env`. The setup wizard generates these automatically from a pasted connection string; both forms can also still be hand-written using the structured `host`/`port`/... fields shown above.
 
 ## Tools
 

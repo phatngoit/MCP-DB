@@ -74,8 +74,8 @@ mcp-db.local.yml     ← local override (tạo bởi wizard)
 | Type definitions | `src/types.ts` | LOW | Tất cả interfaces & discriminated unions |
 | Config loader | `src/config/load-config.ts` | LOW | YAML parse, `readSecret()` helper (env var lookup) |
 | Config schema | `src/config/schema.ts` | LOW | Zod schemas cho AppConfig, SecurityConfig, connection types |
-| Oracle connector | `src/connectors/oracle.ts` | HIGH | Pool mgmt, NCHAR→VARCHAR2 auto-cast, CLOB streaming, explain plan |
-| MSSQL connector | `src/connectors/mssql.ts` | MEDIUM | Pool mgmt, named-param binds (`@p1`, `@p2`, ...), SHOWPLAN_TEXT explain |
+| Oracle connector | `src/connectors/oracle.ts` | HIGH | Pool mgmt, NCHAR→VARCHAR2 auto-cast, CLOB streaming, explain plan, raw `connectDescriptor` support |
+| MSSQL connector | `src/connectors/mssql.ts` | MEDIUM | Pool mgmt, named-param binds (`@p1`, `@p2`, ...), SHOWPLAN_TEXT explain, raw `connectionString`/`connectionStringEnv` support |
 | MongoDB connector | `src/connectors/mongodb.ts` | MEDIUM | find/aggregate, schema infer (sample 20 docs) |
 | Connector registry | `src/core/registry.ts` | MEDIUM | Factory switch, lazy init, `Map<name, DbConnector>` lifecycle |
 | Security guards | `src/core/security.ts` | MEDIUM | validateSqlQuery, assertAllowedObject, maskResult, resolveLimit |
@@ -83,7 +83,7 @@ mcp-db.local.yml     ← local override (tạo bởi wizard)
 | Error classes | `src/core/errors.ts` | LOW | `UserInputError`, `PermissionError` |
 | Result formatter | `src/core/format.ts` | LOW | Render Markdown table từ `QueryResult` |
 | MCP tool registrations | `src/tools/register-tools.ts` | HIGH | 9 tools, mỗi tool gọi security + connector + audit + format |
-| Setup wizard | `src/setup/wizard.ts` | HIGH | readline prompts, TOML/YAML/JSON config merge, `.gitignore` patch |
+| Setup wizard | `src/setup/wizard.ts` | HIGH | readline prompts (single connection string per DB, see `connection-string-parser.ts`), TOML/YAML/JSON config merge, `.gitignore` patch |
 
 **Quy tắc thêm feature mới:**
 - Connector mới → tạo `src/connectors/<db>.ts`, thêm case vào `registry.ts`, schema vào `schema.ts`, type vào `types.ts`, prompt vào `wizard.ts`
