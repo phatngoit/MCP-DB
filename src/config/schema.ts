@@ -15,10 +15,11 @@ const baseConnectionSchema = z.object({
 
 const oracleConnectionSchema = baseConnectionSchema.extend({
   type: z.literal('oracle'),
-  host: z.string(),
+  host: z.string().optional(),
   port: z.number().int().positive().default(1521),
   serviceName: z.string().optional(),
   sid: z.string().optional(),
+  connectDescriptor: z.string().optional(),
   username: z.string(),
   password: z.string().optional(),
   passwordEnv: z.string().optional(),
@@ -29,12 +30,14 @@ const oracleConnectionSchema = baseConnectionSchema.extend({
 
 const mssqlConnectionSchema = baseConnectionSchema.extend({
   type: z.literal('mssql'),
-  host: z.string(),
+  host: z.string().optional(),
   port: z.number().int().positive().default(1433),
-  database: z.string(),
-  username: z.string(),
+  database: z.string().optional(),
+  username: z.string().optional(),
   password: z.string().optional(),
   passwordEnv: z.string().optional(),
+  connectionString: z.string().optional(),
+  connectionStringEnv: z.string().optional(),
   encrypt: z.boolean().default(true),
   trustServerCertificate: z.boolean().default(false),
 });
@@ -45,6 +48,32 @@ const mongoConnectionSchema = baseConnectionSchema.extend({
   uriEnv: z.string().optional(),
   database: z.string(),
 });
+
+const dbConnectionSchema = z
+  .discriminatedUnion('type', [oracleConnectionSchema, mssqlConnectionSchema, mongoConnectionSchema])
+  .superRefine((config, ctx) => {
+    if (config.type === 'oracle' && !config.connectDescriptor && !config.host) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Oracle connection requires either connectDescriptor, or host with serviceName/sid.',
+        path: ['host'],
+      });
+    }
+
+    if (
+      config.type === 'mssql' &&
+      !config.connectionString &&
+      !config.connectionStringEnv &&
+      (!config.host || !config.database)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'MSSQL connection requires either connectionString/connectionStringEnv, or host and database.',
+        path: ['host'],
+      });
+    }
+  });
 
 export const appConfigSchema = z.object({
   security: z
@@ -57,11 +86,5 @@ export const appConfigSchema = z.object({
       auditLogPath: z.string().optional(),
     })
     .default({}),
-  connections: z.record(
-    z.discriminatedUnion('type', [
-      oracleConnectionSchema,
-      mssqlConnectionSchema,
-      mongoConnectionSchema,
-    ]),
-  ),
+  connections: z.record(dbConnectionSchema),
 });

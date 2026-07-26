@@ -15,10 +15,11 @@ export interface BaseConnectionConfig {
 
 export interface OracleConnectionConfig extends BaseConnectionConfig {
   type: 'oracle';
-  host: string;
+  host?: string;
   port: number;
   serviceName?: string;
   sid?: string;
+  connectDescriptor?: string;
   username: string;
   password?: string;
   passwordEnv?: string;
@@ -29,12 +30,14 @@ export interface OracleConnectionConfig extends BaseConnectionConfig {
 
 export interface MssqlConnectionConfig extends BaseConnectionConfig {
   type: 'mssql';
-  host: string;
+  host?: string;
   port: number;
-  database: string;
-  username: string;
+  database?: string;
+  username?: string;
   password?: string;
   passwordEnv?: string;
+  connectionString?: string;
+  connectionStringEnv?: string;
   encrypt?: boolean;
   trustServerCertificate?: boolean;
 }
