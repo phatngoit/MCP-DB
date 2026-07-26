@@ -6,6 +6,8 @@ This project follows semantic versioning.
 
 ## Unreleased
 
+## 0.1.17
+
 - Fixed `MssqlConnector.query()` and `explainQuery()` silently ignoring the `params` bind array passed to `db_query`/`db_explain_query`. MSSQL now binds params as named parameters `@p1`, `@p2`, ... in array order (Oracle already worked via positional `:1`, `:2` binds).
 - Setup wizard now asks for a single connection string per database connection (MSSQL, Oracle, MongoDB) instead of separate host/port/database/username/password prompts.
 - Added `connectionString`/`connectionStringEnv` support to MSSQL connections and `connectDescriptor` support to Oracle connections, so a raw ADO/tedious or TNS connection string can be used directly instead of structured fields.
