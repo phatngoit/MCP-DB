@@ -118,6 +118,26 @@ describe('OracleConnector', () => {
     expect(schemas).toEqual(['APP_READONLY', 'SYS']);
   });
 
+  it('includes both tables and views in listTables', async () => {
+    mockExecute.mockResolvedValue({
+      rows: [
+        { OWNER: 'APP_READONLY', TABLE_NAME: 'USERS', TYPE: 'TABLE' },
+        { OWNER: 'APP_READONLY', TABLE_NAME: 'ACTIVE_USERS', TYPE: 'VIEW' },
+      ],
+    });
+    const connector = new OracleConnector(baseConfig());
+
+    const tables = await connector.listTables('APP_READONLY');
+
+    expect(tables).toEqual([
+      { schema: 'APP_READONLY', name: 'USERS', type: 'TABLE' },
+      { schema: 'APP_READONLY', name: 'ACTIVE_USERS', type: 'VIEW' },
+    ]);
+    const query = mockExecute.mock.calls[0][0] as string;
+    expect(query).toContain('all_tables');
+    expect(query).toContain('all_views');
+  });
+
   it('aggregates multi-row index results into IndexInfo objects', async () => {
     mockExecute
       .mockResolvedValueOnce({

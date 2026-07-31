@@ -63,9 +63,13 @@ export class OracleConnector implements DbConnector {
           TYPE: string;
         }>(
           `SELECT owner, table_name, 'TABLE' AS type
-           FROM all_tables
-          WHERE (:owner IS NULL OR owner = :owner)
-          ORDER BY owner, table_name`,
+             FROM all_tables
+            WHERE (:owner IS NULL OR owner = :owner)
+           UNION ALL
+           SELECT owner, view_name AS table_name, 'VIEW' AS type
+             FROM all_views
+            WHERE (:owner IS NULL OR owner = :owner)
+           ORDER BY 1, 2`,
           { owner },
           { outFormat: oracledb.OUT_FORMAT_OBJECT },
         );
