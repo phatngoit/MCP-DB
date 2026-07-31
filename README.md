@@ -489,6 +489,8 @@ connections:
     mode: readonly
 ```
 
+`db_mongo_find` accepts an optional `skip` for pagination (skip the first N matching documents, then apply `maxRows` as the page size).
+
 ### Qdrant (vector search)
 
 - `db_list_connections` — List configured connections
@@ -500,6 +502,8 @@ connections:
 - `db_qdrant_count` — Count points with an optional filter
 
 `db_list_schemas` returns an empty list for Qdrant connections since Qdrant collections aren't grouped into schemas/databases.
+
+`db_qdrant_scroll` supports paging through an entire collection: each response includes a `Next offset` line when more points remain — pass that value back as the `offset` argument on the next call to continue. Omit `offset` to start from the beginning.
 
 Query result tools return tables like:
 

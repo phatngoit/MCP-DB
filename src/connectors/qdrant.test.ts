@@ -169,6 +169,39 @@ describe('QdrantConnector', () => {
     );
   });
 
+  it('surfaces next_page_offset as nextOffset for pagination', async () => {
+    clientMock.scroll.mockResolvedValue({
+      points: [{ id: 1 }],
+      next_page_offset: 42,
+    });
+    const connector = new QdrantConnector(baseConfig());
+
+    const result = await connector.scroll({ collection: 'documents' });
+
+    expect(result.nextOffset).toBe(42);
+  });
+
+  it('omits nextOffset when there is no further page', async () => {
+    clientMock.scroll.mockResolvedValue({ points: [{ id: 1 }], next_page_offset: null });
+    const connector = new QdrantConnector(baseConfig());
+
+    const result = await connector.scroll({ collection: 'documents' });
+
+    expect(result.nextOffset).toBeNull();
+  });
+
+  it('passes offset through to continue a previous scroll', async () => {
+    clientMock.scroll.mockResolvedValue({ points: [] });
+    const connector = new QdrantConnector(baseConfig());
+
+    await connector.scroll({ collection: 'documents', offset: 42 });
+
+    expect(clientMock.scroll).toHaveBeenCalledWith(
+      'documents',
+      expect.objectContaining({ offset: 42 }),
+    );
+  });
+
   it('counts points via the client count API', async () => {
     clientMock.count.mockResolvedValue({ count: 7 });
     const connector = new QdrantConnector(baseConfig());

@@ -9,6 +9,10 @@ export function formatQueryResult(result: QueryResult): string {
     rowsToMarkdownTable(result.rows),
   ];
 
+  if (result.nextOffset !== undefined && result.nextOffset !== null) {
+    lines.push('', `Next offset: ${result.nextOffset}`);
+  }
+
   return lines.join('\n');
 }
 

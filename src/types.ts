@@ -159,6 +159,7 @@ export interface QueryResult {
   rows: unknown[];
   rowCount: number;
   truncated: boolean;
+  nextOffset?: string | number | null;
 }
 
 export interface ExplainResult {
@@ -171,6 +172,7 @@ export interface MongoFindInput {
   filter?: Record<string, unknown>;
   projection?: Record<string, unknown>;
   sort?: Record<string, 1 | -1>;
+  skip?: number;
   maxRows?: number;
 }
 
@@ -228,6 +230,7 @@ export interface QdrantScrollInput {
   collection: string;
   filter?: Record<string, unknown>;
   limit?: number;
+  offset?: string | number;
   withPayload?: boolean;
   withVector?: boolean;
 }

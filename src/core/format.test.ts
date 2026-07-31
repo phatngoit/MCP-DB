@@ -29,6 +29,25 @@ describe('query result formatting', () => {
     expect(output).toContain('line 1 line 2');
   });
 
+  it('appends a Next offset line when nextOffset is present', () => {
+    const output = formatQueryResult({
+      rows: [{ id: 1 }],
+      rowCount: 1,
+      truncated: true,
+      nextOffset: 42,
+    });
+
+    expect(output).toContain('Next offset: 42');
+  });
+
+  it('omits the Next offset line when nextOffset is null or absent', () => {
+    const withNull = formatQueryResult({ rows: [], rowCount: 0, truncated: false, nextOffset: null });
+    const withoutField = formatQueryResult({ rows: [], rowCount: 0, truncated: false });
+
+    expect(withNull).not.toContain('Next offset');
+    expect(withoutField).not.toContain('Next offset');
+  });
+
   it('formats circular object cells without throwing', () => {
     const value: Record<string, unknown> = { name: 'oracle-object' };
     value.self = value;

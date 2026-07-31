@@ -173,9 +173,10 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
       filter: z.record(z.unknown()).optional(),
       projection: z.record(z.unknown()).optional(),
       sort: z.record(z.union([z.literal(1), z.literal(-1)])).optional(),
+      skip: z.number().int().nonnegative().optional().describe('Number of matching documents to skip, for pagination.'),
       maxRows: z.number().int().positive().optional(),
     },
-    async ({ connection, collection, filter, projection, sort, maxRows }) =>
+    async ({ connection, collection, filter, projection, sort, skip, maxRows }) =>
       runAudited(config, connection, 'db_mongo_find', 'find', async () => {
         const connectionConfig = registry.getConfig(connection);
         assertAllowedObject(collection, 'table', connectionConfig);
@@ -189,6 +190,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
           filter,
           projection,
           sort,
+          skip,
           maxRows: limit,
         });
         return formatQueryResult(maskResult(result, config.security));
@@ -362,9 +364,15 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
       collection: z.string(),
       filter: z.record(z.unknown()).optional().describe('Optional Qdrant filter object.'),
       limit: z.number().int().positive().optional().describe('Max number of results (default 100).'),
+      offset: z
+        .union([z.string(), z.number()])
+        .optional()
+        .describe(
+          'Continuation cursor from a previous call\'s "Next offset" (omit to start from the beginning).',
+        ),
       withVector: z.boolean().optional().describe('Include the stored vector in results (default false).'),
     },
-    async ({ connection, collection, filter, limit, withVector }) =>
+    async ({ connection, collection, filter, limit, offset, withVector }) =>
       runAudited(config, connection, 'db_qdrant_scroll', 'scroll', async () => {
         const connectionConfig = registry.getConfig(connection);
         assertAllowedObject(collection, 'table', connectionConfig);
@@ -377,6 +385,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
           collection,
           filter,
           limit: resolvedLimit,
+          offset,
           withVector,
         });
         return formatQueryResult(maskResult(result, config.security));

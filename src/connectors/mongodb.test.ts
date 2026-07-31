@@ -48,6 +48,7 @@ const { MongodbConnector } = await import('./mongodb.js');
 function makeCursor(toArrayResult: unknown[] = [], explainResult: unknown = {}) {
   return {
     sort: vi.fn().mockReturnThis(),
+    skip: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
     toArray: vi.fn().mockResolvedValue(toArrayResult),
     explain: vi.fn().mockResolvedValue(explainResult),
@@ -170,6 +171,26 @@ describe('MongodbConnector', () => {
 
     expect(result.rowCount).toBe(2);
     expect(result.truncated).toBe(true);
+  });
+
+  it('passes skip through to the cursor for pagination', async () => {
+    const cursor = makeCursor([]);
+    collectionMock.find.mockReturnValue(cursor);
+    const connector = new MongodbConnector(baseConfig());
+
+    await connector.find({ collection: 'users', skip: 20 });
+
+    expect(cursor.skip).toHaveBeenCalledWith(20);
+  });
+
+  it('defaults skip to 0 when not provided', async () => {
+    const cursor = makeCursor([]);
+    collectionMock.find.mockReturnValue(cursor);
+    const connector = new MongodbConnector(baseConfig());
+
+    await connector.find({ collection: 'users' });
+
+    expect(cursor.skip).toHaveBeenCalledWith(0);
   });
 
   it('does not mark find() results truncated when below maxRows', async () => {

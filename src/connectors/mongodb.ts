@@ -82,6 +82,7 @@ export class MongodbConnector implements MongoDbConnector {
         maxTimeMS: this.config.queryTimeoutMs,
       })
       .sort(input.sort ?? {})
+      .skip(input.skip ?? 0)
       .limit(maxRows);
     const rows = await cursor.toArray();
     return { rows, rowCount: rows.length, truncated: rows.length >= maxRows };
@@ -126,6 +127,7 @@ export class MongodbConnector implements MongoDbConnector {
         maxTimeMS: this.config.queryTimeoutMs,
       })
       .sort(input.sort ?? {})
+      .skip(input.skip ?? 0)
       .limit(maxRows)
       .explain('executionStats');
   }

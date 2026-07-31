@@ -93,11 +93,17 @@ export class QdrantConnector implements QdrantDbConnector {
     const result = await client.scroll(input.collection, {
       filter: input.filter,
       limit,
+      offset: input.offset,
       with_payload: input.withPayload ?? true,
       with_vector: input.withVector ?? false,
     });
     const points = result.points ?? [];
-    return { rows: points, rowCount: points.length, truncated: points.length >= limit };
+    return {
+      rows: points,
+      rowCount: points.length,
+      truncated: points.length >= limit,
+      nextOffset: result.next_page_offset as string | number | null | undefined,
+    };
   }
 
   async count(input: QdrantCountInput): Promise<number> {
