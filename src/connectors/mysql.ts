@@ -64,7 +64,7 @@ export class MysqlConnector implements DbConnector {
 
     const [[colRows], [pkRows], [fkRows], [idxRows]] = await Promise.all([
       pool.query<mysql.RowDataPacket[]>(
-        `SELECT column_name, data_type, is_nullable, column_default
+        `SELECT column_name, data_type, is_nullable, column_default, column_comment
            FROM information_schema.columns
           WHERE table_schema = ? AND table_name = ?
           ORDER BY ordinal_position`,
@@ -112,6 +112,7 @@ export class MysqlConnector implements DbConnector {
         type: row.data_type as string,
         nullable: row.is_nullable === 'YES',
         defaultValue: row.column_default as string | null,
+        comment: (row.column_comment as string) || null,
       })),
       primaryKeys: pkRows.map((row) => row.column_name as string),
       foreignKeys: fkRows.map((row) => ({

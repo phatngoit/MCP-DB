@@ -454,7 +454,7 @@ When `MCP_DB_CONFIG` is set, `--config`/`mcp-db.local.yml`/`mcp-db.yml`/`mcp-db.
 - `db_test_connection` — Test a connection
 - `db_list_schemas` — List schemas
 - `db_list_tables` — List tables
-- `db_describe_table` — Describe columns, primary keys, foreign keys, and indexes
+- `db_describe_table` — Describe columns (including catalog comments where available), primary keys, foreign keys, and indexes
 - `db_query` — Run a readonly SQL query
 - `db_explain_query` — Return an execution plan for a SQL query
 - `db_count` — Count rows in a table with an optional WHERE clause
@@ -462,6 +462,8 @@ When `MCP_DB_CONFIG` is set, `--config`/`mcp-db.local.yml`/`mcp-db.yml`/`mcp-db.
 `db_query` and `db_explain_query` accept an optional `params` array for bind parameters. Oracle and PostgreSQL use positional binds (`:1`, `:2`, ... for Oracle; `$1`, `$2`, ... for PostgreSQL); MySQL/MariaDB and SQLite use `?` placeholders in array order; MSSQL has no positional syntax, so params are bound as named parameters `@p1`, `@p2`, ... in the same order as the array.
 
 SQLite has no schema/database concept beyond `main` (plus any attached databases); `db_list_schemas` reflects that via `PRAGMA database_list`, and `db_explain_query` runs `EXPLAIN QUERY PLAN` rather than a cost-based plan.
+
+`db_describe_table` includes each column's catalog comment/description when the database has one set (Oracle `all_col_comments`, PostgreSQL `COMMENT ON COLUMN`, MySQL/MariaDB `COLUMN_COMMENT`, MSSQL `MS_Description` extended property) — the `comment` column in the output is only shown when at least one column actually has one. SQLite has no comment mechanism, so it's never populated there.
 
 ### MongoDB
 

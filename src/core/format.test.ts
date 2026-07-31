@@ -114,4 +114,27 @@ describe('listing formatters', () => {
     expect(output).toContain('Table: **products**');
     expect(output).toContain('| sku | TEXT |');
   });
+
+  it('includes a comment column when at least one column has a comment', () => {
+    const output = formatTableDescription({
+      name: 'users',
+      columns: [
+        { name: 'id', type: 'INT', comment: 'Primary key' },
+        { name: 'email', type: 'TEXT', comment: null },
+      ],
+    });
+    expect(output).toContain('| name | type | comment |');
+    expect(output).toContain('| id | INT | Primary key |');
+  });
+
+  it('omits the comment column entirely when no column has one', () => {
+    const output = formatTableDescription({
+      name: 'users',
+      columns: [
+        { name: 'id', type: 'INT', comment: null },
+        { name: 'email', type: 'TEXT' },
+      ],
+    });
+    expect(output).not.toContain('comment');
+  });
 });

@@ -68,7 +68,7 @@ export class MssqlConnector implements DbConnector {
     const pool = await this.getPool();
     const schemaName = schema ?? 'dbo';
 
-    const [colResult, pkResult, fkResult, idxResult] = await Promise.all([
+    const [colResult, pkResult, fkResult, idxResult, commentResult] = await Promise.all([
       // Columns
       pool.request()
         .input('schema', sql.NVarChar, schemaName)
@@ -139,6 +139,21 @@ export class MssqlConnector implements DbConnector {
             WHERE s.name = @schema AND t.name = @table AND i.type > 0
             ORDER BY i.name, ic.key_ordinal`,
         ),
+
+      // Column comments (MS_Description extended property)
+      pool.request()
+        .input('schema', sql.NVarChar, schemaName)
+        .input('table', sql.NVarChar, table)
+        .query<{ column_name: string; comment: string | null }>(
+          `SELECT c.name AS column_name,
+                  CAST(ep.value AS NVARCHAR(MAX)) AS comment
+             FROM sys.columns c
+             JOIN sys.tables t ON c.object_id = t.object_id
+             JOIN sys.schemas s ON t.schema_id = s.schema_id
+             LEFT JOIN sys.extended_properties ep
+               ON ep.major_id = c.object_id AND ep.minor_id = c.column_id AND ep.name = 'MS_Description'
+            WHERE s.name = @schema AND t.name = @table`,
+        ),
     ]);
 
     // Aggregate index rows â†’ IndexInfo[]
@@ -150,6 +165,10 @@ export class MssqlConnector implements DbConnector {
       indexMap.get(row.index_name)!.columns.push(row.column_name);
     }
 
+    const commentMap = new Map<string, string | null>(
+      (commentResult.recordset ?? []).map((row) => [row.column_name, row.comment]),
+    );
+
     return {
       schema: schemaName,
       name: table,
@@ -158,6 +177,7 @@ export class MssqlConnector implements DbConnector {
         type: r.data_type,
         nullable: r.is_nullable === 'YES',
         defaultValue: r.column_default,
+        comment: commentMap.get(r.column_name) ?? null,
       })),
       primaryKeys: (pkResult.recordset ?? []).map((r) => r.column_name),
       foreignKeys: (fkResult.recordset ?? []).map((r) => ({

@@ -73,8 +73,10 @@ export class PostgresConnector implements DbConnector {
         data_type: string;
         is_nullable: string;
         column_default: string | null;
+        column_comment: string | null;
       }>(
-        `SELECT column_name, data_type, is_nullable, column_default
+        `SELECT column_name, data_type, is_nullable, column_default,
+                col_description((quote_ident(table_schema) || '.' || quote_ident(table_name))::regclass, ordinal_position) AS column_comment
            FROM information_schema.columns
           WHERE table_schema = $1 AND table_name = $2
           ORDER BY ordinal_position`,
@@ -149,6 +151,7 @@ export class PostgresConnector implements DbConnector {
         type: row.data_type,
         nullable: row.is_nullable === 'YES',
         defaultValue: row.column_default,
+        comment: row.column_comment,
       })),
       primaryKeys: pkResult.rows.map((row) => row.column_name),
       foreignKeys: fkResult.rows.map((row) => ({

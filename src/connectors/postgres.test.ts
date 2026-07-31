@@ -70,7 +70,17 @@ describe('PostgresConnector', () => {
 
   it('aggregates multi-row index results into IndexInfo objects', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', column_default: null }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            column_name: 'id',
+            data_type: 'integer',
+            is_nullable: 'NO',
+            column_default: null,
+            column_comment: 'Primary key',
+          },
+        ],
+      })
       .mockResolvedValueOnce({ rows: [{ column_name: 'id' }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
@@ -89,6 +99,7 @@ describe('PostgresConnector', () => {
       { name: 'users_email_idx', columns: ['email', 'tenant_id'], unique: true },
     ]);
     expect(description.primaryKeys).toEqual(['id']);
+    expect(description.columns[0]).toMatchObject({ name: 'id', comment: 'Primary key' });
   });
 
   it('marks results truncated when more rows exist than maxRows', async () => {

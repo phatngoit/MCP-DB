@@ -122,7 +122,8 @@ describe('MssqlConnector', () => {
           { index_name: 'PK_users', column_name: 'id', is_unique: true, key_ordinal: 1 },
           { index_name: 'IX_users_email', column_name: 'email', is_unique: false, key_ordinal: 1 },
         ],
-      });
+      })
+      .mockResolvedValueOnce({ recordset: [{ column_name: 'id', comment: 'Primary key' }] });
 
     const connector = new MssqlConnector(baseConfig());
     const description = await connector.describeTable('dbo', 'users');
@@ -132,6 +133,7 @@ describe('MssqlConnector', () => {
       { name: 'IX_users_email', columns: ['email'], unique: false },
     ]);
     expect(description.primaryKeys).toEqual(['id']);
+    expect(description.columns[0]).toMatchObject({ name: 'id', comment: 'Primary key' });
   });
 
   it('marks results truncated when more rows exist than maxRows', async () => {

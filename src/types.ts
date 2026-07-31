@@ -125,6 +125,7 @@ export interface ColumnInfo {
   type: string;
   nullable?: boolean;
   defaultValue?: string | null;
+  comment?: string | null;
 }
 
 export interface ForeignKeyInfo {

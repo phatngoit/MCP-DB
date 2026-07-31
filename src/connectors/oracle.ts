@@ -91,7 +91,7 @@ export class OracleConnector implements DbConnector {
         const owner = schema?.toUpperCase() ?? this.config.username.toUpperCase();
         const tableName = table.toUpperCase();
 
-        const [colResult, pkResult, fkResult, idxResult] = await Promise.all([
+        const [colResult, pkResult, fkResult, idxResult, commentResult] = await Promise.all([
           connection.execute<{
             COLUMN_NAME: string;
             DATA_TYPE: string;
@@ -161,6 +161,14 @@ export class OracleConnector implements DbConnector {
             { owner, tableName },
             { outFormat: oracledb.OUT_FORMAT_OBJECT },
           ),
+
+          connection.execute<{ COLUMN_NAME: string; COMMENTS: string | null }>(
+            `SELECT column_name, comments
+             FROM all_col_comments
+            WHERE owner = :owner AND table_name = :tableName`,
+            { owner, tableName },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT },
+          ),
         ]);
 
         const indexMap = new Map<string, IndexInfo>();
@@ -175,6 +183,10 @@ export class OracleConnector implements DbConnector {
           indexMap.get(row.INDEX_NAME)!.columns.push(row.COLUMN_NAME);
         }
 
+        const commentMap = new Map<string, string | null>(
+          (commentResult.rows ?? []).map((row) => [row.COLUMN_NAME, row.COMMENTS]),
+        );
+
         return {
           schema: owner,
           name: table,
@@ -183,6 +195,7 @@ export class OracleConnector implements DbConnector {
             type: row.DATA_TYPE,
             nullable: row.NULLABLE === 'Y',
             defaultValue: row.DATA_DEFAULT,
+            comment: commentMap.get(row.COLUMN_NAME) ?? null,
           })),
           primaryKeys: (pkResult.rows ?? []).map((r) => r.COLUMN_NAME),
           foreignKeys: (fkResult.rows ?? []).map((r) => ({

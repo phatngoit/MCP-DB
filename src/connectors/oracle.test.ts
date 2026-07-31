@@ -150,7 +150,8 @@ describe('OracleConnector', () => {
           { INDEX_NAME: 'PK_USERS', COLUMN_NAME: 'ID', UNIQUENESS: 'UNIQUE', COLUMN_POSITION: 1 },
           { INDEX_NAME: 'IX_USERS_EMAIL', COLUMN_NAME: 'EMAIL', UNIQUENESS: 'NONUNIQUE', COLUMN_POSITION: 1 },
         ],
-      });
+      })
+      .mockResolvedValueOnce({ rows: [{ COLUMN_NAME: 'ID', COMMENTS: 'Primary key' }] });
 
     const connector = new OracleConnector(baseConfig());
     const description = await connector.describeTable('APP_READONLY', 'USERS');
@@ -160,6 +161,7 @@ describe('OracleConnector', () => {
       { name: 'IX_USERS_EMAIL', columns: ['EMAIL'], unique: false },
     ]);
     expect(description.primaryKeys).toEqual(['ID']);
+    expect(description.columns[0]).toMatchObject({ name: 'ID', comment: 'Primary key' });
   });
 
   it('marks query() results truncated once the row count reaches maxRows', async () => {

@@ -66,7 +66,17 @@ describe('MysqlConnector', () => {
 
   it('aggregates multi-row index results into IndexInfo objects and treats non_unique=0 as unique', async () => {
     mockQuery
-      .mockResolvedValueOnce([[{ column_name: 'id', data_type: 'int', is_nullable: 'NO', column_default: null }]])
+      .mockResolvedValueOnce([
+        [
+          {
+            column_name: 'id',
+            data_type: 'int',
+            is_nullable: 'NO',
+            column_default: null,
+            column_comment: 'Primary key',
+          },
+        ],
+      ])
       .mockResolvedValueOnce([[{ column_name: 'id' }]])
       .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([
@@ -83,6 +93,22 @@ describe('MysqlConnector', () => {
       { name: 'PRIMARY', columns: ['id'], unique: true },
       { name: 'idx_email', columns: ['email'], unique: false },
     ]);
+    expect(description.columns[0]).toMatchObject({ name: 'id', comment: 'Primary key' });
+  });
+
+  it('converts an empty MySQL column_comment to null', async () => {
+    mockQuery
+      .mockResolvedValueOnce([
+        [{ column_name: 'id', data_type: 'int', is_nullable: 'NO', column_default: null, column_comment: '' }],
+      ])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]]);
+
+    const connector = new MysqlConnector(baseConfig());
+    const description = await connector.describeTable('appdb', 'users');
+
+    expect(description.columns[0].comment).toBeNull();
   });
 
   it('marks results truncated when more rows exist than maxRows', async () => {
