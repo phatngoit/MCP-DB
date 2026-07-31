@@ -84,7 +84,7 @@ Kebab-case filenames (`load-config.ts`, `register-tools.ts`). Named exports for 
 
 ### Testing
 
-Unit tests are colocated as `*.test.ts` (currently `src/core/security.test.ts`, `src/core/format.test.ts`) and run without a live database. Connector code (`src/connectors/`) has no automated tests — verify DB connectivity changes manually with `test-connections` against the Docker fixtures in `examples/docker-compose.yml` (see `docs/integration-testing.md`).
+Unit tests are colocated as `*.test.ts` and run without a live database. Connector code (`src/connectors/*.test.ts`) mocks its driver package (`oracledb`, `mssql`, `mongodb`, `pg`, `mysql2/promise`, `@qdrant/js-client-rest`) with `vi.mock()`/`vi.hoisted()` to test query building, row-mapping, and error-handling logic; still verify real DB connectivity changes manually with `test-connections` against the Docker fixtures in `examples/docker-compose.yml` (see `docs/integration-testing.md`).
 
 ## Thông tin hiện tại của dự án
 
