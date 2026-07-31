@@ -49,8 +49,27 @@ const mongoConnectionSchema = baseConnectionSchema.extend({
   database: z.string(),
 });
 
+const postgresConnectionSchema = baseConnectionSchema.extend({
+  type: z.literal('postgres'),
+  host: z.string().optional(),
+  port: z.number().int().positive().default(5432),
+  database: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  passwordEnv: z.string().optional(),
+  connectionString: z.string().optional(),
+  connectionStringEnv: z.string().optional(),
+  ssl: z.boolean().default(false),
+  rejectUnauthorized: z.boolean().default(true),
+});
+
 const dbConnectionSchema = z
-  .discriminatedUnion('type', [oracleConnectionSchema, mssqlConnectionSchema, mongoConnectionSchema])
+  .discriminatedUnion('type', [
+    oracleConnectionSchema,
+    mssqlConnectionSchema,
+    mongoConnectionSchema,
+    postgresConnectionSchema,
+  ])
   .superRefine((config, ctx) => {
     if (config.type === 'oracle' && !config.connectDescriptor && !config.host) {
       ctx.addIssue({
@@ -70,6 +89,20 @@ const dbConnectionSchema = z
         code: z.ZodIssueCode.custom,
         message:
           'MSSQL connection requires either connectionString/connectionStringEnv, or host and database.',
+        path: ['host'],
+      });
+    }
+
+    if (
+      config.type === 'postgres' &&
+      !config.connectionString &&
+      !config.connectionStringEnv &&
+      (!config.host || !config.database)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'PostgreSQL connection requires either connectionString/connectionStringEnv, or host and database.',
         path: ['host'],
       });
     }

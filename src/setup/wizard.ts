@@ -8,10 +8,11 @@ import {
   parseMongoConnectionString,
   parseMssqlConnectionString,
   parseOracleConnectionString,
+  parsePostgresConnectionString,
 } from './connection-string-parser.js';
 
 type AiClient = 'claude' | 'codex' | 'gemini' | 'kimi' | 'generic';
-type DatabaseType = 'oracle' | 'mssql' | 'mongodb';
+type DatabaseType = 'oracle' | 'mssql' | 'mongodb' | 'postgres';
 
 interface SetupWizardOptions {
   projectDir: string;
@@ -84,6 +85,11 @@ const databaseChoices: Choice<DatabaseType>[] = [
   {
     id: 'mongodb',
     label: 'MongoDB',
+    description: 'Paste a connection string.',
+  },
+  {
+    id: 'postgres',
+    label: 'PostgreSQL',
     description: 'Paste a connection string.',
   },
 ];
@@ -242,6 +248,29 @@ async function collectConnections(
           mode: 'readonly',
         };
         envEntries.push({ name: uriEnv, value: parsed.uri });
+      }
+
+      if (database === 'postgres') {
+        const name = await promptConnectionName(
+          rl,
+          defaultConnectionName(database, index),
+          connections,
+        );
+        const connectionString = await promptConnectionString(
+          rl,
+          'Connection string',
+          'postgres://user:password@host:5432/database',
+          parsePostgresConnectionString,
+        );
+        const connectionStringEnv = envName(name, 'CONNECTION_STRING');
+        output.write(`  → Connection string saved as ${connectionStringEnv} in .env\n`);
+
+        connections[name] = {
+          type: 'postgres',
+          connectionStringEnv,
+          mode: 'readonly',
+        };
+        envEntries.push({ name: connectionStringEnv, value: connectionString });
       }
 
       index += 1;
@@ -619,6 +648,9 @@ function normalizeDatabases(values: string[] | undefined): DatabaseType[] | unde
     'sql-server': 'mssql',
     mongodb: 'mongodb',
     mongo: 'mongodb',
+    postgres: 'postgres',
+    postgresql: 'postgres',
+    pg: 'postgres',
   });
 }
 
@@ -686,6 +718,9 @@ function databaseLabel(database: DatabaseType): string {
   if (database === 'oracle') {
     return 'Oracle Database';
   }
+  if (database === 'postgres') {
+    return 'PostgreSQL';
+  }
   return 'MongoDB';
 }
 
@@ -694,6 +729,7 @@ function defaultConnectionName(database: DatabaseType, index: number): string {
     mssql: 'mssql_local',
     oracle: 'oracle_local',
     mongodb: 'mongo_local',
+    postgres: 'postgres_local',
   };
   const baseName = baseNames[database];
   return index === 1 ? baseName : `${baseName}_${index}`;

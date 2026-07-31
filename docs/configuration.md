@@ -9,9 +9,9 @@ Each connection is named. AI tools will use the name when calling MCP tools.
 
 Secrets can be provided directly, but environment variables are recommended through `passwordEnv` or `uriEnv`.
 
-Each connection owns its own network address. MSSQL and Oracle use explicit `host` and `port` fields. MongoDB stores host and port inside the URI referenced by `uriEnv`.
+Each connection owns its own network address. MSSQL, Oracle, and PostgreSQL use explicit `host` and `port` fields (PostgreSQL and MSSQL also accept a full `connectionString`/`connectionStringEnv` instead). MongoDB stores host and port inside the URI referenced by `uriEnv`.
 
-You can define multiple connections for the same database type by giving each one a unique name, such as `mssql_report`, `mssql_billing`, `oracle_ftms`, and `mongo_logs`.
+You can define multiple connections for the same database type by giving each one a unique name, such as `mssql_report`, `mssql_billing`, `oracle_ftms`, `postgres_billing`, and `mongo_logs`.
 
 Oracle uses the `oracledb` driver in Thin mode. Oracle Instant Client is not required.
 
@@ -98,6 +98,7 @@ Keep real credentials in `.env` and reference them from YAML:
 MSSQL_PASSWORD=...
 ORACLE_PASSWORD=...
 MONGODB_URI=...
+POSTGRES_PASSWORD=...
 ```
 
 Never commit `.env` or local config files containing production endpoints.

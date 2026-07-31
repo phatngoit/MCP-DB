@@ -4,6 +4,7 @@ import {
   parseMongoConnectionString,
   parseMssqlConnectionString,
   parseOracleConnectionString,
+  parsePostgresConnectionString,
 } from './connection-string-parser.js';
 
 const ORACLE_ODP_NET_EXAMPLE =
@@ -13,6 +14,8 @@ const MSSQL_EXAMPLE =
   'Server=10.20.30.53,1439;Database=DemoDb;User ID=demo_ms_user;Password=demo_ms_pass1;MultipleActiveResultSets=True;TrustServerCertificate=True;';
 
 const MONGO_EXAMPLE = 'mongodb://demo_mongo_user:demo_mongo_pass1@10.20.30.10:27017/demo_billing_db';
+
+const POSTGRES_EXAMPLE = 'postgres://demo_pg_user:demo_pg_pass1@10.20.30.20:5432/demo_billing_db';
 
 describe('parseOracleConnectionString', () => {
   it('parses an ODP.NET connection string, keeping the descriptor intact', () => {
@@ -94,5 +97,24 @@ describe('parseMssqlConnectionString', () => {
 
   it('returns null for input with no key=value pairs', () => {
     expect(parseMssqlConnectionString('just some random text')).toBeNull();
+  });
+});
+
+describe('parsePostgresConnectionString', () => {
+  it('accepts a postgres:// URI verbatim', () => {
+    expect(parsePostgresConnectionString(POSTGRES_EXAMPLE)).toBe(POSTGRES_EXAMPLE);
+  });
+
+  it('accepts a postgresql:// URI verbatim', () => {
+    const uri = 'postgresql://user:pass@localhost:5432/appdb';
+    expect(parsePostgresConnectionString(uri)).toBe(uri);
+  });
+
+  it('returns null for a non-postgres URI', () => {
+    expect(parsePostgresConnectionString(MONGO_EXAMPLE)).toBeNull();
+  });
+
+  it('returns null for input with no scheme', () => {
+    expect(parsePostgresConnectionString('just some random text')).toBeNull();
   });
 });

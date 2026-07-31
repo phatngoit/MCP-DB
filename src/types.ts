@@ -1,4 +1,4 @@
-export type ConnectionType = 'oracle' | 'mssql' | 'mongodb';
+export type ConnectionType = 'oracle' | 'mssql' | 'mongodb' | 'postgres';
 export type AccessMode = 'readonly' | 'readwrite';
 
 export interface BaseConnectionConfig {
@@ -49,10 +49,25 @@ export interface MongoConnectionConfig extends BaseConnectionConfig {
   database: string;
 }
 
+export interface PostgresConnectionConfig extends BaseConnectionConfig {
+  type: 'postgres';
+  host?: string;
+  port: number;
+  database?: string;
+  username?: string;
+  password?: string;
+  passwordEnv?: string;
+  connectionString?: string;
+  connectionStringEnv?: string;
+  ssl?: boolean;
+  rejectUnauthorized?: boolean;
+}
+
 export type DbConnectionConfig =
   | OracleConnectionConfig
   | MssqlConnectionConfig
-  | MongoConnectionConfig;
+  | MongoConnectionConfig
+  | PostgresConnectionConfig;
 
 export interface SecurityConfig {
   defaultMaxRows: number;

@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/mcp-db-connect.svg)](https://www.npmjs.com/package/mcp-db-connect)
 [![CI](https://github.com/phatngoit/MCP-DB/actions/workflows/ci.yml/badge.svg)](https://github.com/phatngoit/MCP-DB/actions/workflows/ci.yml)
 
-Universal MCP server for readonly-first access to Oracle Database, Microsoft SQL Server, and MongoDB.
+Universal MCP server for readonly-first access to Oracle Database, Microsoft SQL Server, PostgreSQL, and MongoDB.
 
 This project is designed for AI tools that support the Model Context Protocol. Projects can install it, provide a YAML config, and expose safe database tools to their AI client.
 
@@ -16,7 +16,7 @@ By default, commands run from a project directory automatically use:
 
 ## Features
 
-- Oracle, MSSQL, and MongoDB connectors
+- Oracle, MSSQL, PostgreSQL, and MongoDB connectors
 - Multiple named connections in one config file
 - Readonly by default
 - SQL multi-statement blocking
@@ -334,6 +334,15 @@ connections:
     uriEnv: MONGODB_URI
     database: appdb
     mode: readonly
+
+  postgres_local:
+    type: postgres
+    host: localhost
+    port: 5432
+    database: appdb
+    username: app_readonly
+    passwordEnv: POSTGRES_PASSWORD
+    mode: readonly
 ```
 
 MongoDB stores the selected port inside the URI saved in `.env`, for example:
@@ -362,7 +371,7 @@ Oracle Instant Client is not required. If the database has `NCHAR`/`NVARCHAR2` c
 
 ### Connection strings instead of individual fields
 
-Oracle and MSSQL also accept a raw connection string instead of `host`/`port`/`database`/`username`:
+Oracle, MSSQL, and PostgreSQL also accept a raw connection string instead of `host`/`port`/`database`/`username`:
 
 ```yaml
 connections:
@@ -377,13 +386,20 @@ connections:
     username: demo_ora_user
     passwordEnv: ORACLE_FROM_STRING_PASSWORD
     mode: readonly
+
+  postgres_from_string:
+    type: postgres
+    connectionStringEnv: POSTGRES_FROM_STRING_CONNECTION_STRING
+    mode: readonly
 ```
 
-`connectionStringEnv` points to a full ADO/tedious connection string in `.env` (same convention as MongoDB's `uriEnv`). `connectDescriptor` holds an Oracle TNS connect descriptor or Easy Connect string and is not secret — only the password goes in `.env`. The setup wizard generates these automatically from a pasted connection string; both forms can also still be hand-written using the structured `host`/`port`/... fields shown above.
+`connectionStringEnv` points to a full ADO/tedious connection string (MSSQL) or a `postgres://user:password@host:5432/database` URI (PostgreSQL) in `.env` (same convention as MongoDB's `uriEnv`). `connectDescriptor` holds an Oracle TNS connect descriptor or Easy Connect string and is not secret — only the password goes in `.env`. The setup wizard generates these automatically from a pasted connection string; both forms can also still be hand-written using the structured `host`/`port`/... fields shown above.
+
+PostgreSQL connections also accept `ssl: true` (with `rejectUnauthorized: false` for self-signed certificates common on managed Postgres providers).
 
 ## Tools
 
-### SQL (Oracle + MSSQL)
+### SQL (Oracle + MSSQL + PostgreSQL)
 
 - `db_list_connections` — List configured connections
 - `db_test_connection` — Test a connection
@@ -394,7 +410,7 @@ connections:
 - `db_explain_query` — Return an execution plan for a SQL query
 - `db_count` — Count rows in a table with an optional WHERE clause
 
-`db_query` and `db_explain_query` accept an optional `params` array for bind parameters. Oracle uses positional binds (`:1`, `:2`, ...); MSSQL has no positional syntax, so params are bound as named parameters `@p1`, `@p2`, ... in the same order as the array.
+`db_query` and `db_explain_query` accept an optional `params` array for bind parameters. Oracle and PostgreSQL use positional binds (`:1`, `:2`, ... for Oracle; `$1`, `$2`, ... for PostgreSQL); MSSQL has no positional syntax, so params are bound as named parameters `@p1`, `@p2`, ... in the same order as the array.
 
 ### MongoDB
 
@@ -453,7 +469,6 @@ Use database accounts with the smallest permissions possible. The MCP layer is a
 
 ## Roadmap
 
-- PostgreSQL connector
 - MySQL / MariaDB connector
 - Docker image distribution, followed by a Smithery.ai container listing
 - Vector database connector (pgvector or Qdrant)

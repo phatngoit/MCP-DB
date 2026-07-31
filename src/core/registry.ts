@@ -2,6 +2,7 @@ import type { AppConfig, DbConnector, DbConnectionConfig } from '../types.js';
 import { MssqlConnector } from '../connectors/mssql.js';
 import { MongodbConnector } from '../connectors/mongodb.js';
 import { OracleConnector } from '../connectors/oracle.js';
+import { PostgresConnector } from '../connectors/postgres.js';
 import { UserInputError } from './errors.js';
 
 export class ConnectorRegistry {
@@ -50,5 +51,7 @@ function createConnector(config: DbConnectionConfig): DbConnector {
       return new MssqlConnector(config);
     case 'mongodb':
       return new MongodbConnector(config);
+    case 'postgres':
+      return new PostgresConnector(config);
   }
 }

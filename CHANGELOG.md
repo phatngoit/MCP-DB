@@ -6,6 +6,10 @@ This project follows semantic versioning.
 
 ## Unreleased
 
+- Added a PostgreSQL connector (`type: postgres`) with schema/table listing, column/primary-key/foreign-key/index introspection, `EXPLAIN (FORMAT JSON)` plans, and connection-string or structured host/port config. Covered by the same `db_query`, `db_explain_query`, `db_count`, `db_list_schemas`, `db_list_tables`, and `db_describe_table` tools as Oracle and MSSQL.
+- Setup wizard now supports PostgreSQL connection strings (`postgres://user:password@host:5432/database`).
+- Listed the project on the official MCP Registry (`registry.modelcontextprotocol.io`) via `server.json`, published automatically on release through GitHub Actions OIDC. Documented Glama.ai's manual-submission status and why a Smithery.ai listing is deferred until Docker support ships.
+
 ## 0.1.17
 
 - Fixed `MssqlConnector.query()` and `explainQuery()` silently ignoring the `params` bind array passed to `db_query`/`db_explain_query`. MSSQL now binds params as named parameters `@p1`, `@p2`, ... in array order (Oracle already worked via positional `:1`, `:2` binds).

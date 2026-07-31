@@ -102,3 +102,67 @@ describe('appConfigSchema — MSSQL connection modes', () => {
     ).toThrow();
   });
 });
+
+describe('appConfigSchema — PostgreSQL connection modes', () => {
+  it('accepts the existing structured host/database shape', () => {
+    expect(() =>
+      appConfigSchema.parse(
+        withConnections({
+          pg: {
+            type: 'postgres',
+            host: 'localhost',
+            database: 'appdb',
+            username: 'app_readonly',
+            passwordEnv: 'PG_PW',
+            mode: 'readonly',
+          },
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('accepts a connectionStringEnv with no host/database/username', () => {
+    expect(() =>
+      appConfigSchema.parse(
+        withConnections({
+          pg: {
+            type: 'postgres',
+            connectionStringEnv: 'PG_CONNECTION_STRING',
+            mode: 'readonly',
+          },
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('rejects a PostgreSQL connection with neither connection string nor host+database', () => {
+    expect(() =>
+      appConfigSchema.parse(
+        withConnections({
+          pg: {
+            type: 'postgres',
+            username: 'app_readonly',
+            passwordEnv: 'PG_PW',
+            mode: 'readonly',
+          },
+        }),
+      ),
+    ).toThrow();
+  });
+
+  it('defaults the port to 5432', () => {
+    const config = appConfigSchema.parse(
+      withConnections({
+        pg: {
+          type: 'postgres',
+          host: 'localhost',
+          database: 'appdb',
+          username: 'app_readonly',
+          passwordEnv: 'PG_PW',
+          mode: 'readonly',
+        },
+      }),
+    );
+    expect((config.connections.pg as { port: number }).port).toBe(5432);
+  });
+});

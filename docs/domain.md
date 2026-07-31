@@ -7,7 +7,7 @@
 | **Package** | `mcp-db-connect` v0.1.12 (npm public) |
 | **Mục đích** | Universal MCP server — cho phép AI tools (Claude, Codex, Gemini, Kimi) query database qua Model Context Protocol |
 | **Runtime** | Node.js >=20.10, TypeScript 5.7, ES2022 NodeNext modules |
-| **Databases** | Oracle (oracledb ^6.7.2), MSSQL (mssql ^11.0.1), MongoDB (mongodb ^6.12.0) |
+| **Databases** | Oracle (oracledb ^6.7.2), MSSQL (mssql ^11.0.1), PostgreSQL (pg ^8.22.0), MongoDB (mongodb ^6.12.0) |
 | **Transport** | stdio (default) + Streamable HTTP (Express) |
 | **Security model** | Readonly-first, SQL regex validation, field masking, JSONL audit log |
 | **Quy mô** | ~9 source files chính, 9 MCP tools, 7 CLI commands, 2 HTTP endpoints |
@@ -44,7 +44,8 @@
 | DB System | Driver | Default Port | Auth Fields | Connection Pool |
 |---|---|---|---|---|
 | Oracle | `oracledb` ^6.7.2 | 1521 | `username` + `passwordEnv` (hoặc `password`) | `createPool` min:0 max:4 |
-| MSSQL | `mssql` ^11.0.1 | 1433 | `username` + `passwordEnv` (hoặc `password`) | `ConnectionPool` min:0 max:4 |
+| MSSQL | `mssql` ^11.0.1 | 1433 | `username` + `passwordEnv` (hoặc `password`), hoặc `connectionStringEnv` | `ConnectionPool` min:0 max:4 |
+| PostgreSQL | `pg` ^8.22.0 | 5432 | `username` + `passwordEnv` (hoặc `password`), hoặc `connectionStringEnv` | `Pool` max:4 |
 | MongoDB | `mongodb` ^6.12.0 | 27017 | `uriEnv` (hoặc `uri`) | MongoClient internal pool |
 
 **Config file hierarchy** (không commit):
@@ -76,6 +77,7 @@ mcp-db.local.yml     ← local override (tạo bởi wizard)
 | Config schema | `src/config/schema.ts` | LOW | Zod schemas cho AppConfig, SecurityConfig, connection types |
 | Oracle connector | `src/connectors/oracle.ts` | HIGH | Pool mgmt, NCHAR→VARCHAR2 auto-cast, CLOB streaming, explain plan, raw `connectDescriptor` support |
 | MSSQL connector | `src/connectors/mssql.ts` | MEDIUM | Pool mgmt, named-param binds (`@p1`, `@p2`, ...), SHOWPLAN_TEXT explain, raw `connectionString`/`connectionStringEnv` support |
+| PostgreSQL connector | `src/connectors/postgres.ts` | MEDIUM | Pool mgmt, native `$1`/`$2` positional binds, `EXPLAIN (FORMAT JSON)`, raw `connectionString`/`connectionStringEnv` support |
 | MongoDB connector | `src/connectors/mongodb.ts` | MEDIUM | find/aggregate, schema infer (sample 20 docs) |
 | Connector registry | `src/core/registry.ts` | MEDIUM | Factory switch, lazy init, `Map<name, DbConnector>` lifecycle |
 | Security guards | `src/core/security.ts` | MEDIUM | validateSqlQuery, assertAllowedObject, maskResult, resolveLimit |

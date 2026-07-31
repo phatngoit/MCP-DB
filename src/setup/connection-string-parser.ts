@@ -99,3 +99,8 @@ export function parseMssqlConnectionString(input: string): string | null {
   const looksValid = /[A-Za-z][A-Za-z0-9 ]*=[^;]+/.test(trimmed);
   return looksValid ? trimmed : null;
 }
+
+export function parsePostgresConnectionString(input: string): string | null {
+  const trimmed = input.trim();
+  return /^postgres(ql)?:\/\/\S+/i.test(trimmed) ? trimmed : null;
+}

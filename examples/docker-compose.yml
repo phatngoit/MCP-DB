@@ -38,3 +38,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 60
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: app_readonly
+      POSTGRES_PASSWORD: "YourStrong!Passw0rd"
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_readonly -d appdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
