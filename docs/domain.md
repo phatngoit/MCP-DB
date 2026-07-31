@@ -81,7 +81,7 @@ mcp-db.local.yml     ← local override (tạo bởi wizard)
 | MSSQL connector | `src/connectors/mssql.ts` | MEDIUM | Pool mgmt, named-param binds (`@p1`, `@p2`, ...), SHOWPLAN_TEXT explain, raw `connectionString`/`connectionStringEnv` support |
 | PostgreSQL connector | `src/connectors/postgres.ts` | MEDIUM | Pool mgmt, native `$1`/`$2` positional binds, `EXPLAIN (FORMAT JSON)`, raw `connectionString`/`connectionStringEnv` support |
 | MySQL/MariaDB connector | `src/connectors/mysql.ts` | MEDIUM | Pool mgmt, native `?` positional binds, `EXPLAIN FORMAT=JSON`, raw `connectionString`/`connectionStringEnv` support |
-| MongoDB connector | `src/connectors/mongodb.ts` | MEDIUM | find/aggregate, schema infer (sample 20 docs) |
+| MongoDB connector | `src/connectors/mongodb.ts` | MEDIUM | find/aggregate, schema infer (sample size configurable via `describeSampleSize`, default 20, override per call via tool `sampleSize`) |
 | Qdrant connector | `src/connectors/qdrant.ts` | MEDIUM | search/scroll/count, no schemas, describeTable infers từ payload_schema + vectors config |
 | Connector registry | `src/core/registry.ts` | MEDIUM | Factory switch, lazy init, `Map<name, DbConnector>` lifecycle |
 | Security guards | `src/core/security.ts` | MEDIUM | validateSqlQuery, assertAllowedObject, maskResult, resolveLimit |

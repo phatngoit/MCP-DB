@@ -61,6 +61,7 @@ function baseConfig(overrides: Record<string, unknown> = {}) {
     name: 'mongo_test',
     uri: 'mongodb://user:pass@localhost:27017/appdb',
     database: 'appdb',
+    describeSampleSize: 20,
     ...overrides,
   };
 }
@@ -129,6 +130,36 @@ describe('MongodbConnector', () => {
       { name: 'age', type: 'number | string', nullable: true, defaultValue: null },
       { name: 'name', type: 'string', nullable: false, defaultValue: null },
     ]);
+  });
+
+  it('uses the connection describeSampleSize as the default sample limit', async () => {
+    const cursor = makeCursor([]);
+    collectionMock.find.mockReturnValue(cursor);
+    const connector = new MongodbConnector(baseConfig({ describeSampleSize: 50 }));
+
+    await connector.describeCollection('users');
+
+    expect(cursor.limit).toHaveBeenCalledWith(50);
+  });
+
+  it('lets a per-call sampleSize override the connection default', async () => {
+    const cursor = makeCursor([]);
+    collectionMock.find.mockReturnValue(cursor);
+    const connector = new MongodbConnector(baseConfig({ describeSampleSize: 20 }));
+
+    await connector.describeCollection('users', 5);
+
+    expect(cursor.limit).toHaveBeenCalledWith(5);
+  });
+
+  it('passes sampleSize through describeTable to describeCollection', async () => {
+    const cursor = makeCursor([]);
+    collectionMock.find.mockReturnValue(cursor);
+    const connector = new MongodbConnector(baseConfig({ describeSampleSize: 20 }));
+
+    await connector.describeTable(undefined, 'users', 7);
+
+    expect(cursor.limit).toHaveBeenCalledWith(7);
   });
 
   it('marks find() results truncated once the row count reaches maxRows', async () => {

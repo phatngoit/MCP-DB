@@ -65,15 +65,23 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
       connection: z.string(),
       table: z.string(),
       schema: z.string().optional(),
+      sampleSize: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          'MongoDB only: number of sample documents used to infer column types (default: connection describeSampleSize, 20 unless configured).',
+        ),
     },
-    async ({ connection, table, schema }) =>
+    async ({ connection, table, schema, sampleSize }) =>
       runAudited(config, connection, 'db_describe_table', 'describe_table', async () => {
         const connectionConfig = registry.getConfig(connection);
         if (schema) {
           assertAllowedObject(schema, 'schema', connectionConfig);
         }
         assertAllowedObject(table, 'table', connectionConfig);
-        const desc = await registry.get(connection).describeTable(schema, table);
+        const desc = await registry.get(connection).describeTable(schema, table, sampleSize);
         return formatTableDescription(desc);
       }),
   );

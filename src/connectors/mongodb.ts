@@ -48,13 +48,18 @@ export class MongodbConnector implements MongoDbConnector {
     }));
   }
 
-  async describeTable(_schema: string | undefined, table: string): Promise<TableDescription> {
-    return this.describeCollection(table);
+  async describeTable(
+    _schema: string | undefined,
+    table: string,
+    sampleSize?: number,
+  ): Promise<TableDescription> {
+    return this.describeCollection(table, sampleSize);
   }
 
-  async describeCollection(collection: string): Promise<TableDescription> {
+  async describeCollection(collection: string, sampleSize?: number): Promise<TableDescription> {
     const db = (await this.getClient()).db(this.config.database);
-    const samples = await db.collection(collection).find({}).limit(20).toArray();
+    const limit = sampleSize ?? this.config.describeSampleSize;
+    const samples = await db.collection(collection).find({}).limit(limit).toArray();
     const columns = inferMongoColumns(samples);
     return { schema: this.config.database, name: collection, columns };
   }

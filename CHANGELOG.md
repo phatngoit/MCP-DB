@@ -13,6 +13,7 @@ This project follows semantic versioning.
 - Fixed the root `Dockerfile`, which failed to build because it never copied `tsconfig.build.json` into the build stage. Added `CMD ["start"]`, `EXPOSE 3000`, a `.dockerignore`, an `examples/docker-compose.server.yml` example, and a release workflow job that builds and pushes the image to `ghcr.io/phatngoit/mcp-db-connect` (tagged with the release version and `latest`).
 - Added a Qdrant connector (`type: qdrant`) for vector search: `db_qdrant_search` (similarity search with optional filter/score threshold), `db_qdrant_scroll` (browse/filter without a vector), and `db_qdrant_count`. `db_list_tables`/`db_describe_table` list collections and their vector/payload field schema; `db_list_schemas` returns an empty list since Qdrant has no schema concept. Setup wizard now supports pasting a Qdrant URL and optional API key.
 - Added unit tests for every connector (Oracle, MSSQL, MongoDB, PostgreSQL, MySQL/MariaDB, Qdrant) that mock the underlying driver package to cover query building, row/index aggregation, truncation logic, and error handling — including Oracle's NCHAR→VARCHAR2 auto-cast retry path — without needing a live database.
+- Made the MongoDB `db_describe_table` sample size configurable instead of a hardcoded 20 documents: set `describeSampleSize` on a `mongodb` connection for a per-connection default, or pass `sampleSize` on the `db_describe_table` tool call to override it per request.
 
 ## 0.1.17
 

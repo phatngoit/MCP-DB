@@ -261,3 +261,34 @@ describe('appConfigSchema — Qdrant connection modes', () => {
     ).not.toThrow();
   });
 });
+
+describe('appConfigSchema — MongoDB connection modes', () => {
+  it('defaults describeSampleSize to 20', () => {
+    const config = appConfigSchema.parse(
+      withConnections({
+        mg: {
+          type: 'mongodb',
+          uriEnv: 'MONGODB_URI',
+          database: 'appdb',
+          mode: 'readonly',
+        },
+      }),
+    );
+    expect((config.connections.mg as { describeSampleSize: number }).describeSampleSize).toBe(20);
+  });
+
+  it('accepts an explicit describeSampleSize', () => {
+    const config = appConfigSchema.parse(
+      withConnections({
+        mg: {
+          type: 'mongodb',
+          uriEnv: 'MONGODB_URI',
+          database: 'appdb',
+          describeSampleSize: 50,
+          mode: 'readonly',
+        },
+      }),
+    );
+    expect((config.connections.mg as { describeSampleSize: number }).describeSampleSize).toBe(50);
+  });
+});

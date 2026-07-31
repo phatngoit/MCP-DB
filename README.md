@@ -447,6 +447,18 @@ PostgreSQL and MySQL/MariaDB connections also accept `ssl: true` (with `rejectUn
 - `db_mongo_explain_find` — Return an execution plan for a find operation
 - `db_mongo_explain_aggregate` — Return an execution plan for an aggregate pipeline
 
+`db_describe_table` infers MongoDB column types by sampling documents. The sample size defaults to 20 and can be set per-connection with `describeSampleSize`, or overridden per call with the tool's `sampleSize` argument:
+
+```yaml
+connections:
+  mongo_local:
+    type: mongodb
+    uriEnv: MONGODB_URI
+    database: appdb
+    describeSampleSize: 100
+    mode: readonly
+```
+
 ### Qdrant (vector search)
 
 - `db_list_connections` — List configured connections
@@ -543,6 +555,5 @@ Use database accounts with the smallest permissions possible. The MCP layer is a
 ## Roadmap
 
 - Accept connection config via environment variables (in addition to file-based config) so this project can be hosted by Smithery.ai and similar container-based MCP platforms
-- Configurable sample size for MongoDB `db_describe_table` (currently 20 documents)
 - OpenTelemetry tracing
 - Secrets manager integrations (AWS Secrets Manager, Azure Key Vault, HashiCorp Vault)

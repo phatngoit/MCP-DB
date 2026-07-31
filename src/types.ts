@@ -47,6 +47,7 @@ export interface MongoConnectionConfig extends BaseConnectionConfig {
   uri?: string;
   uriEnv?: string;
   database: string;
+  describeSampleSize: number;
 }
 
 export interface PostgresConnectionConfig extends BaseConnectionConfig {
@@ -191,7 +192,7 @@ export interface DbConnector {
   testConnection(): Promise<{ ok: boolean; message: string }>;
   listSchemas(): Promise<string[]>;
   listTables(schema?: string): Promise<TableInfo[]>;
-  describeTable(schema: string | undefined, table: string): Promise<TableDescription>;
+  describeTable(schema: string | undefined, table: string, sampleSize?: number): Promise<TableDescription>;
   query(input: QueryInput): Promise<QueryResult>;
   explainQuery(input: QueryInput): Promise<ExplainResult>;
   close(): Promise<void>;
@@ -199,7 +200,7 @@ export interface DbConnector {
 
 export interface MongoDbConnector extends DbConnector {
   listCollections(): Promise<TableInfo[]>;
-  describeCollection(collection: string): Promise<TableDescription>;
+  describeCollection(collection: string, sampleSize?: number): Promise<TableDescription>;
   find(input: MongoFindInput): Promise<QueryResult>;
   aggregate(input: MongoAggregateInput): Promise<QueryResult>;
   count(input: MongoCountInput): Promise<number>;

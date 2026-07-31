@@ -47,6 +47,7 @@ const mongoConnectionSchema = baseConnectionSchema.extend({
   uri: z.string().optional(),
   uriEnv: z.string().optional(),
   database: z.string(),
+  describeSampleSize: z.number().int().positive().default(20),
 });
 
 const postgresConnectionSchema = baseConnectionSchema.extend({
