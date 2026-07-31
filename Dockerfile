@@ -13,8 +13,10 @@ COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY README.md CHANGELOG.md LICENSE ./
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 3000
 
-ENTRYPOINT ["node", "dist/cli.js"]
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["start"]

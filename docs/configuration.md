@@ -35,6 +35,17 @@ mcp-db-connect start
 
 `mcp-db-connect init` is the non-interactive template command. It creates `mcp-db.local.yml`, `.env.example`, and updates `.gitignore` for local secrets and audit logs.
 
+## Config via Environment Variable
+
+Set `MCP_DB_CONFIG` to the entire config document (YAML or JSON) to skip file discovery entirely — no `mcp-db.local.yml`/`mcp-db.yml`/`.env` needs to exist. This is for platforms that only inject environment variables into a running container and can't mount a project file, such as Smithery.ai:
+
+```bash
+MCP_DB_CONFIG='connections: {pg_local: {type: postgres, host: localhost, port: 5432, database: appdb, username: app_readonly, password: change-me, mode: readonly}}' \
+  mcp-db-connect start
+```
+
+`--config`, `--project`, and the `mcp-db.local.yml`/`mcp-db.yml`/`mcp-db.yaml` lookup are all ignored when `MCP_DB_CONFIG` is set.
+
 ## Query Output
 
 `db_query`, `db_mongo_find`, and `db_mongo_aggregate` return Markdown tables so fields appear horizontally and values appear in rows underneath:

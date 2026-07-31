@@ -41,6 +41,14 @@
           "description": "Path to .env file.",
           "isRequired": false
         }
+      ],
+      "environmentVariables": [
+        {
+          "name": "MCP_DB_CONFIG",
+          "description": "Full mcp-db-connect config (security + connections) as YAML or JSON. When set, file-based config discovery is skipped entirely.",
+          "isRequired": false,
+          "isSecret": true
+        }
       ]
     },
     {
@@ -76,6 +84,14 @@
           "name": "--path",
           "default": "/mcp",
           "isRequired": false
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "MCP_DB_CONFIG",
+          "description": "Full mcp-db-connect config (security + connections) as YAML or JSON. When set, file-based config discovery is skipped entirely.",
+          "isRequired": false,
+          "isSecret": true
         }
       ]
     }

@@ -57,6 +57,8 @@ mcp-db.local.yml     ← local override (tạo bởi wizard)
 .env                 ← credentials
 ```
 
+**Env-var config**: nếu biến môi trường `MCP_DB_CONFIG` được set (YAML hoặc JSON, toàn bộ document `security` + `connections`), `loadConfig()` dùng nội dung đó thay vì đọc file, và bỏ qua hoàn toàn việc tìm file config. Đây là cơ chế cho phép host trên các platform container không mount được file (Smithery.ai, Railway, ...). Docker entrypoint (`docker-entrypoint.sh`) cũng tự chuyển sang `serve-http` khi biến `PORT` tồn tại.
+
 **AI Client integrations** (consumers, không phải dependencies):
 
 | Client | Config file | Transport |

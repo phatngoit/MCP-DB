@@ -6,7 +6,7 @@ import { Command } from 'commander';
 
 const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
 import dotenv from 'dotenv';
-import { loadConfig } from './config/load-config.js';
+import { CONFIG_ENV_VAR, loadConfig } from './config/load-config.js';
 import { appConfigSchema } from './config/schema.js';
 import { ConnectorRegistry } from './core/registry.js';
 import { startHttpServer, startStdioServer } from './server.js';
@@ -24,7 +24,7 @@ program
   .description('Start the MCP server over stdio.')
   .option(
     '-c, --config <path>',
-    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml. Ignored if MCP_DB_CONFIG is set.',
   )
   .option('--env <path>', 'Path to .env file.')
   .option(
@@ -44,7 +44,7 @@ program
   .description('Start the MCP server over Streamable HTTP.')
   .option(
     '-c, --config <path>',
-    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml. Ignored if MCP_DB_CONFIG is set.',
   )
   .option('--env <path>', 'Path to .env file.')
   .option(
@@ -92,7 +92,7 @@ program
   .description('Validate a config file without starting the MCP server.')
   .option(
     '-c, --config <path>',
-    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml. Ignored if MCP_DB_CONFIG is set.',
   )
   .option('--project <path>', 'Project directory used for config discovery.', process.cwd())
   .action(async (options: { config?: string; project: string }) => {
@@ -105,7 +105,7 @@ program
   .description('Test every configured database connection.')
   .option(
     '-c, --config <path>',
-    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml. Ignored if MCP_DB_CONFIG is set.',
   )
   .option('--env <path>', 'Path to .env file.')
   .option(
@@ -259,7 +259,11 @@ function resolveProjectDir(projectPath: string): string {
 async function resolveConfigPath(
   configPath: string | undefined,
   projectDir: string,
-): Promise<string> {
+): Promise<string | undefined> {
+  if (process.env[CONFIG_ENV_VAR]) {
+    return undefined;
+  }
+
   if (configPath) {
     return path.resolve(projectDir, configPath);
   }
@@ -273,7 +277,7 @@ async function resolveConfigPath(
   }
 
   throw new Error(
-    `No MCP DB config found in ${projectDir}. Create mcp-db.local.yml with "mcp-db-connect init" or pass --config.`,
+    `No MCP DB config found in ${projectDir}. Create mcp-db.local.yml with "mcp-db-connect init", pass --config, or set ${CONFIG_ENV_VAR}.`,
   );
 }
 

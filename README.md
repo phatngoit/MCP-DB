@@ -418,6 +418,27 @@ connections:
 
 PostgreSQL and MySQL/MariaDB connections also accept `ssl: true` (with `rejectUnauthorized: false` for self-signed certificates common on managed database providers).
 
+### Config via environment variable
+
+Every command that loads config (`start`, `serve-http`, `validate-config`, `test-connections`) also accepts the entire config document — the same `security` + `connections` structure normally stored in `mcp-db.local.yml` — as YAML or JSON in the `MCP_DB_CONFIG` environment variable, instead of a file:
+
+```bash
+export MCP_DB_CONFIG='
+connections:
+  postgres_demo:
+    type: postgres
+    host: db.example.com
+    port: 5432
+    database: appdb
+    username: app_readonly
+    password: change-me
+    mode: readonly
+'
+mcp-db-connect serve-http --host 0.0.0.0 --port 3000
+```
+
+When `MCP_DB_CONFIG` is set, `--config`/`mcp-db.local.yml`/`mcp-db.yml`/`mcp-db.yaml` file discovery is skipped entirely — no file needs to exist. This is what lets container platforms that can't mount a project file into the container (Smithery.ai and similar hosted MCP platforms) run this server: they inject the whole config as one environment variable instead. Secrets can be embedded directly (as `password:`/`connectionString:` above) or still indirected through their own env var via `passwordEnv`/`connectionStringEnv`/etc. — both forms keep working exactly as they do with a file.
+
 ## Tools
 
 ### SQL (Oracle + MSSQL + PostgreSQL + MySQL/MariaDB)
@@ -533,6 +554,15 @@ Or use the `examples/docker-compose.server.yml` example, which builds the image 
 docker compose -f examples/docker-compose.server.yml up --build
 ```
 
+### Hosting on a cloud/container platform
+
+No file mount is required if you set `MCP_DB_CONFIG` instead (see [Config via environment variable](#config-via-environment-variable)). The image's entrypoint (`docker-entrypoint.sh`) also auto-switches from stdio to the Streamable HTTP transport when a `PORT` environment variable is present — the convention used by Smithery.ai, Railway, Render, Fly.io, and similar platforms — binding to `0.0.0.0:$PORT` without any command override:
+
+```bash
+docker run -e PORT=8080 -e MCP_DB_CONFIG="$(cat mcp-db.local.yml)" -p 8080:8080 \
+  ghcr.io/phatngoit/mcp-db-connect:latest
+```
+
 ## Security Defaults
 
 The server is intentionally conservative:
@@ -550,10 +580,9 @@ Use database accounts with the smallest permissions possible. The MCP layer is a
 
 - **[Official MCP Registry](https://registry.modelcontextprotocol.io)** — listed as `io.github.phatngoit/mcp-db-connect` via `server.json` at the repo root. The release workflow (`.github/workflows/release.yml`) publishes to this registry automatically after every npm release using GitHub Actions OIDC (no stored token needed).
 - **[Glama.ai](https://glama.ai/mcp/servers)** — indexed by crawling this repository; submitted manually, no manifest file required.
-- **Smithery.ai** — not yet listed. A Docker image now exists (`Dockerfile`, published to `ghcr.io/phatngoit/mcp-db-connect`), but Smithery hosts the container itself in its own cloud, so it cannot mount a local project's `mcp-db.local.yml`/`.env` the way `docker run -v ...` does here. Listing it cleanly requires accepting connection config through the environment variables Smithery injects (its `configSchema` mechanism) instead of only file mounts — tracked in the Roadmap.
+- **Smithery.ai** — not yet submitted. The blockers are resolved: a `Dockerfile` (published to `ghcr.io/phatngoit/mcp-db-connect`), a `smithery.yaml` container-runtime manifest at the repo root, `MCP_DB_CONFIG` env-var config (no file mount needed), and a `PORT`-aware entrypoint that switches to the HTTP transport automatically. Submitting still requires a one-time manual step — connecting this repo through Smithery's GitHub App at `smithery.ai/new` — and `smithery.yaml`'s exact fields should be double-checked against Smithery's current docs first, since they weren't independently verifiable while writing it.
 
 ## Roadmap
 
-- Accept connection config via environment variables (in addition to file-based config) so this project can be hosted by Smithery.ai and similar container-based MCP platforms
 - OpenTelemetry tracing
 - Secrets manager integrations (AWS Secrets Manager, Azure Key Vault, HashiCorp Vault)

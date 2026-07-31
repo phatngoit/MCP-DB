@@ -1,0 +1,34 @@
+# Smithery.ai container-runtime manifest.
+#
+# NOTE: the exact field names/behavior of Smithery's container runtime were not
+# independently verifiable from this repo's environment when this file was
+# authored. Before relying on this for a real deployment, cross-check it against
+# Smithery's current docs at https://smithery.ai/docs/build/project-config/smithery.yaml.
+runtime: "container"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
+startCommand:
+  type: "http"
+  configSchema:
+    type: object
+    required:
+      - MCP_DB_CONFIG
+    properties:
+      MCP_DB_CONFIG:
+        type: string
+        description: >-
+          Full mcp-db-connect config as YAML or JSON (the same "security" +
+          "connections" document normally stored in mcp-db.local.yml). See
+          https://github.com/phatngoit/MCP-DB#config for the schema.
+  exampleConfig:
+    MCP_DB_CONFIG: |
+      connections:
+        postgres_demo:
+          type: postgres
+          host: db.example.com
+          port: 5432
+          database: appdb
+          username: app_readonly
+          password: change-me
+          mode: readonly
