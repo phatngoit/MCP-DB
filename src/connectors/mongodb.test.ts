@@ -12,6 +12,11 @@ const { mockConnect, mockClose, adminMock, listCollectionsCursor, collectionMock
       aggregate: vi.fn(),
       countDocuments: vi.fn(),
       indexes: vi.fn(),
+      insertMany: vi.fn(),
+      updateOne: vi.fn(),
+      updateMany: vi.fn(),
+      deleteOne: vi.fn(),
+      deleteMany: vi.fn(),
     };
 
     const dbMock = {
@@ -79,6 +84,11 @@ describe('MongodbConnector', () => {
     collectionMock.aggregate.mockReset();
     collectionMock.countDocuments.mockReset();
     collectionMock.indexes.mockReset();
+    collectionMock.insertMany.mockReset();
+    collectionMock.updateOne.mockReset();
+    collectionMock.updateMany.mockReset();
+    collectionMock.deleteOne.mockReset();
+    collectionMock.deleteMany.mockReset();
   });
 
   it('connects once and reuses the client across calls', async () => {
@@ -224,6 +234,80 @@ describe('MongodbConnector', () => {
       { name: '_id_', key: { _id: 1 }, unique: undefined, sparse: undefined },
       { name: 'email_unique', key: { email: 1 }, unique: true, sparse: false },
     ]);
+  });
+
+  it('inserts documents and maps the result', async () => {
+    collectionMock.insertMany.mockResolvedValue({
+      insertedCount: 2,
+      insertedIds: { 0: 'a', 1: 'b' },
+    });
+    const connector = new MongodbConnector(baseConfig());
+
+    const result = await connector.insert({
+      collection: 'users',
+      documents: [{ name: 'Alice' }, { name: 'Bob' }],
+    });
+
+    expect(result).toEqual({ insertedCount: 2, insertedIds: ['a', 'b'] });
+    expect(collectionMock.insertMany).toHaveBeenCalledWith([{ name: 'Alice' }, { name: 'Bob' }]);
+  });
+
+  it('updates a single document by default', async () => {
+    collectionMock.updateOne.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+    const connector = new MongodbConnector(baseConfig());
+
+    const result = await connector.update({
+      collection: 'users',
+      filter: { _id: '1' },
+      update: { $set: { name: 'Alice' } },
+    });
+
+    expect(result).toEqual({ matchedCount: 1, modifiedCount: 1 });
+    expect(collectionMock.updateOne).toHaveBeenCalledWith({ _id: '1' }, { $set: { name: 'Alice' } });
+    expect(collectionMock.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('updates every matching document when many is true', async () => {
+    collectionMock.updateMany.mockResolvedValue({ matchedCount: 5, modifiedCount: 5 });
+    const connector = new MongodbConnector(baseConfig());
+
+    const result = await connector.update({
+      collection: 'users',
+      filter: { active: true },
+      update: { $set: { active: false } },
+      many: true,
+    });
+
+    expect(result).toEqual({ matchedCount: 5, modifiedCount: 5 });
+    expect(collectionMock.updateMany).toHaveBeenCalledWith(
+      { active: true },
+      { $set: { active: false } },
+    );
+  });
+
+  it('deletes a single document by default', async () => {
+    collectionMock.deleteOne.mockResolvedValue({ deletedCount: 1 });
+    const connector = new MongodbConnector(baseConfig());
+
+    const result = await connector.delete({ collection: 'users', filter: { _id: '1' } });
+
+    expect(result).toEqual({ deletedCount: 1 });
+    expect(collectionMock.deleteOne).toHaveBeenCalledWith({ _id: '1' });
+    expect(collectionMock.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('deletes every matching document when many is true', async () => {
+    collectionMock.deleteMany.mockResolvedValue({ deletedCount: 3 });
+    const connector = new MongodbConnector(baseConfig());
+
+    const result = await connector.delete({
+      collection: 'users',
+      filter: { active: false },
+      many: true,
+    });
+
+    expect(result).toEqual({ deletedCount: 3 });
+    expect(collectionMock.deleteMany).toHaveBeenCalledWith({ active: false });
   });
 
   it('closes and clears the client', async () => {

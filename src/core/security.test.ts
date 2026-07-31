@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { BaseConnectionConfig, SecurityConfig } from '../types.js';
-import { maskResult, resolveLimit, validateMongoPipeline, validateSqlQuery } from './security.js';
+import {
+  assertNonEmptyFilter,
+  assertWriteAllowed,
+  maskResult,
+  resolveLimit,
+  validateMongoPipeline,
+  validateSqlQuery,
+} from './security.js';
 
 const security: SecurityConfig = {
   defaultMaxRows: 100,
@@ -59,5 +66,34 @@ describe('security guards', () => {
       password: '[masked]',
       profile: { api_key: '[masked]', name: 'A' },
     });
+  });
+
+  it('blocks writes when the connection is readonly', () => {
+    expect(() => assertWriteAllowed(security, { type: 'mongodb', mode: 'readonly' })).toThrow(
+      /Write operations are blocked/,
+    );
+  });
+
+  it('blocks writes when allowWriteOperations is false even in readwrite mode', () => {
+    expect(() => assertWriteAllowed(security, { type: 'mongodb', mode: 'readwrite' })).toThrow(
+      /Write operations are blocked/,
+    );
+  });
+
+  it('allows writes when readwrite mode and allowWriteOperations are both set', () => {
+    expect(() =>
+      assertWriteAllowed(
+        { ...security, allowWriteOperations: true },
+        { type: 'mongodb', mode: 'readwrite' },
+      ),
+    ).not.toThrow();
+  });
+
+  it('rejects an empty filter to avoid affecting an entire collection', () => {
+    expect(() => assertNonEmptyFilter({})).toThrow(/non-empty filter/);
+  });
+
+  it('accepts a non-empty filter', () => {
+    expect(() => assertNonEmptyFilter({ _id: '123' })).not.toThrow();
   });
 });

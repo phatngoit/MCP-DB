@@ -194,6 +194,38 @@ export interface MongoIndexInfo {
   sparse?: boolean;
 }
 
+export interface MongoInsertInput {
+  collection: string;
+  documents: Record<string, unknown>[];
+}
+
+export interface MongoInsertResult {
+  insertedCount: number;
+  insertedIds: unknown[];
+}
+
+export interface MongoUpdateInput {
+  collection: string;
+  filter: Record<string, unknown>;
+  update: Record<string, unknown>;
+  many?: boolean;
+}
+
+export interface MongoUpdateResult {
+  matchedCount: number;
+  modifiedCount: number;
+}
+
+export interface MongoDeleteInput {
+  collection: string;
+  filter: Record<string, unknown>;
+  many?: boolean;
+}
+
+export interface MongoDeleteResult {
+  deletedCount: number;
+}
+
 export interface DbConnector {
   readonly type: ConnectionType;
   readonly name: string;
@@ -215,6 +247,9 @@ export interface MongoDbConnector extends DbConnector {
   getIndexes(collection: string): Promise<MongoIndexInfo[]>;
   explainFind(input: MongoFindInput): Promise<unknown>;
   explainAggregate(input: MongoAggregateInput): Promise<unknown>;
+  insert(input: MongoInsertInput): Promise<MongoInsertResult>;
+  update(input: MongoUpdateInput): Promise<MongoUpdateResult>;
+  delete(input: MongoDeleteInput): Promise<MongoDeleteResult>;
 }
 
 export interface QdrantSearchInput {

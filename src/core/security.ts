@@ -60,6 +60,20 @@ export function validateMongoPipeline(
   }
 }
 
+export function assertWriteAllowed(security: SecurityConfig, connection: BaseConnectionConfig): void {
+  if (connection.mode === 'readonly' || !security.allowWriteOperations) {
+    throw new PermissionError(
+      'Write operations are blocked for this connection. Set mode: readwrite and security.allowWriteOperations: true to enable.',
+    );
+  }
+}
+
+export function assertNonEmptyFilter(filter: Record<string, unknown>): void {
+  if (Object.keys(filter).length === 0) {
+    throw new UserInputError('A non-empty filter is required to avoid affecting an entire collection.');
+  }
+}
+
 export function assertAllowedObject(
   value: string,
   kind: 'schema' | 'table',

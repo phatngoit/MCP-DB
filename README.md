@@ -476,6 +476,11 @@ SQLite has no schema/database concept beyond `main` (plus any attached databases
 - `db_mongo_get_indexes` — List indexes for a collection
 - `db_mongo_explain_find` — Return an execution plan for a find operation
 - `db_mongo_explain_aggregate` — Return an execution plan for an aggregate pipeline
+- `db_mongo_insert` — Insert one or more documents
+- `db_mongo_update` — Update documents matching a filter (`many: true` for all matches, otherwise just the first)
+- `db_mongo_delete` — Delete documents matching a filter (`many: true` for all matches, otherwise just the first)
+
+`db_mongo_insert`/`db_mongo_update`/`db_mongo_delete` are blocked unless the connection has `mode: readwrite` **and** `security.allowWriteOperations: true` — mirroring how write SQL statements are gated for the SQL connectors. `db_mongo_update` and `db_mongo_delete` also require a non-empty `filter`, so a mistaken `{}` can't silently update or delete an entire collection.
 
 `db_describe_table` infers MongoDB column types by sampling documents. The sample size defaults to 20 and can be set per-connection with `describeSampleSize`, or overridden per call with the tool's `sampleSize` argument:
 
@@ -583,7 +588,8 @@ The server is intentionally conservative:
 - Connections default to `readonly`
 - SQL write and DDL keywords are blocked unless global and connection config allow writes
 - SQL multi-statement execution is blocked
-- MongoDB aggregate write stages are blocked
+- MongoDB aggregate write stages and `db_mongo_insert`/`db_mongo_update`/`db_mongo_delete` are blocked unless global and connection config allow writes
+- `db_mongo_update`/`db_mongo_delete` require a non-empty filter, so they can't accidentally affect an entire collection
 - Result rows are capped by config
 - Sensitive fields are masked recursively
 

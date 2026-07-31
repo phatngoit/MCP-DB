@@ -4,8 +4,14 @@ import type {
   MongoConnectionConfig,
   MongoCountInput,
   MongoDbConnector,
+  MongoDeleteInput,
+  MongoDeleteResult,
   MongoFindInput,
   MongoIndexInfo,
+  MongoInsertInput,
+  MongoInsertResult,
+  MongoUpdateInput,
+  MongoUpdateResult,
   QueryInput,
   QueryResult,
   TableDescription,
@@ -140,6 +146,33 @@ export class MongodbConnector implements MongoDbConnector {
       .collection(input.collection)
       .aggregate(pipeline, { maxTimeMS: this.config.queryTimeoutMs })
       .explain('executionStats');
+  }
+
+  async insert(input: MongoInsertInput): Promise<MongoInsertResult> {
+    const db = (await this.getClient()).db(this.config.database);
+    const result = await db.collection(input.collection).insertMany(input.documents);
+    return {
+      insertedCount: result.insertedCount,
+      insertedIds: Object.values(result.insertedIds),
+    };
+  }
+
+  async update(input: MongoUpdateInput): Promise<MongoUpdateResult> {
+    const db = (await this.getClient()).db(this.config.database);
+    const collection = db.collection(input.collection);
+    const result = input.many
+      ? await collection.updateMany(input.filter, input.update)
+      : await collection.updateOne(input.filter, input.update);
+    return { matchedCount: result.matchedCount, modifiedCount: result.modifiedCount };
+  }
+
+  async delete(input: MongoDeleteInput): Promise<MongoDeleteResult> {
+    const db = (await this.getClient()).db(this.config.database);
+    const collection = db.collection(input.collection);
+    const result = input.many
+      ? await collection.deleteMany(input.filter)
+      : await collection.deleteOne(input.filter);
+    return { deletedCount: result.deletedCount ?? 0 };
   }
 
   async close(): Promise<void> {

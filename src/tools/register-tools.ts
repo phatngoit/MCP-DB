@@ -4,6 +4,8 @@ import type { AppConfig, MongoDbConnector, QdrantDbConnector } from '../types.js
 import type { ConnectorRegistry } from '../core/registry.js';
 import {
   assertAllowedObject,
+  assertNonEmptyFilter,
+  assertWriteAllowed,
   maskResult,
   resolveLimit,
   validateMongoPipeline,
@@ -322,6 +324,83 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
         }
         const plan = await (connector as MongoDbConnector).explainAggregate({ collection, pipeline });
         return JSON.stringify(plan, null, 2);
+      }),
+  );
+
+  server.tool(
+    'db_mongo_insert',
+    'Insert one or more documents into a MongoDB collection. Requires mode: readwrite and security.allowWriteOperations: true.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      documents: z.array(z.record(z.unknown())).min(1).describe('One or more documents to insert.'),
+    },
+    async ({ connection, collection, documents }) =>
+      runAudited(config, connection, 'db_mongo_insert', 'insert', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        assertWriteAllowed(config.security, connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'mongodb') {
+          throw new Error('db_mongo_insert requires a MongoDB connection.');
+        }
+        const result = await (connector as MongoDbConnector).insert({ collection, documents });
+        return `Inserted ${result.insertedCount} document(s). IDs: ${JSON.stringify(result.insertedIds)}`;
+      }),
+  );
+
+  server.tool(
+    'db_mongo_update',
+    'Update documents in a MongoDB collection matching a filter. Requires mode: readwrite and security.allowWriteOperations: true.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      filter: z.record(z.unknown()).describe('Non-empty MongoDB filter selecting documents to update.'),
+      update: z.record(z.unknown()).describe('MongoDB update document, e.g. { $set: { ... } }.'),
+      many: z
+        .boolean()
+        .optional()
+        .describe('Update every matching document instead of just the first (default false).'),
+    },
+    async ({ connection, collection, filter, update, many }) =>
+      runAudited(config, connection, 'db_mongo_update', 'update', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        assertWriteAllowed(config.security, connectionConfig);
+        assertNonEmptyFilter(filter);
+        const connector = registry.get(connection);
+        if (connector.type !== 'mongodb') {
+          throw new Error('db_mongo_update requires a MongoDB connection.');
+        }
+        const result = await (connector as MongoDbConnector).update({ collection, filter, update, many });
+        return `Matched ${result.matchedCount}, modified ${result.modifiedCount} document(s).`;
+      }),
+  );
+
+  server.tool(
+    'db_mongo_delete',
+    'Delete documents from a MongoDB collection matching a filter. Requires mode: readwrite and security.allowWriteOperations: true.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      filter: z.record(z.unknown()).describe('Non-empty MongoDB filter selecting documents to delete.'),
+      many: z
+        .boolean()
+        .optional()
+        .describe('Delete every matching document instead of just the first (default false).'),
+    },
+    async ({ connection, collection, filter, many }) =>
+      runAudited(config, connection, 'db_mongo_delete', 'delete', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        assertWriteAllowed(config.security, connectionConfig);
+        assertNonEmptyFilter(filter);
+        const connector = registry.get(connection);
+        if (connector.type !== 'mongodb') {
+          throw new Error('db_mongo_delete requires a MongoDB connection.');
+        }
+        const result = await (connector as MongoDbConnector).delete({ collection, filter, many });
+        return `Deleted ${result.deletedCount} document(s).`;
       }),
   );
 
