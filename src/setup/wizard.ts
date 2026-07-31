@@ -7,12 +7,13 @@ import { appConfigSchema } from '../config/schema.js';
 import {
   parseMongoConnectionString,
   parseMssqlConnectionString,
+  parseMysqlConnectionString,
   parseOracleConnectionString,
   parsePostgresConnectionString,
 } from './connection-string-parser.js';
 
 type AiClient = 'claude' | 'codex' | 'gemini' | 'kimi' | 'generic';
-type DatabaseType = 'oracle' | 'mssql' | 'mongodb' | 'postgres';
+type DatabaseType = 'oracle' | 'mssql' | 'mongodb' | 'postgres' | 'mysql';
 
 interface SetupWizardOptions {
   projectDir: string;
@@ -90,6 +91,11 @@ const databaseChoices: Choice<DatabaseType>[] = [
   {
     id: 'postgres',
     label: 'PostgreSQL',
+    description: 'Paste a connection string.',
+  },
+  {
+    id: 'mysql',
+    label: 'MySQL / MariaDB',
     description: 'Paste a connection string.',
   },
 ];
@@ -267,6 +273,29 @@ async function collectConnections(
 
         connections[name] = {
           type: 'postgres',
+          connectionStringEnv,
+          mode: 'readonly',
+        };
+        envEntries.push({ name: connectionStringEnv, value: connectionString });
+      }
+
+      if (database === 'mysql') {
+        const name = await promptConnectionName(
+          rl,
+          defaultConnectionName(database, index),
+          connections,
+        );
+        const connectionString = await promptConnectionString(
+          rl,
+          'Connection string',
+          'mysql://user:password@host:3306/database',
+          parseMysqlConnectionString,
+        );
+        const connectionStringEnv = envName(name, 'CONNECTION_STRING');
+        output.write(`  → Connection string saved as ${connectionStringEnv} in .env\n`);
+
+        connections[name] = {
+          type: 'mysql',
           connectionStringEnv,
           mode: 'readonly',
         };
@@ -651,6 +680,9 @@ function normalizeDatabases(values: string[] | undefined): DatabaseType[] | unde
     postgres: 'postgres',
     postgresql: 'postgres',
     pg: 'postgres',
+    mysql: 'mysql',
+    maria: 'mysql',
+    mariadb: 'mysql',
   });
 }
 
@@ -721,6 +753,9 @@ function databaseLabel(database: DatabaseType): string {
   if (database === 'postgres') {
     return 'PostgreSQL';
   }
+  if (database === 'mysql') {
+    return 'MySQL / MariaDB';
+  }
   return 'MongoDB';
 }
 
@@ -730,6 +765,7 @@ function defaultConnectionName(database: DatabaseType, index: number): string {
     oracle: 'oracle_local',
     mongodb: 'mongo_local',
     postgres: 'postgres_local',
+    mysql: 'mysql_local',
   };
   const baseName = baseNames[database];
   return index === 1 ? baseName : `${baseName}_${index}`;

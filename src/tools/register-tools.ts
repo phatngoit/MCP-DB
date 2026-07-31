@@ -80,7 +80,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
 
   server.tool(
     'db_query',
-    'Run a readonly SQL query against Oracle, Microsoft SQL Server, or PostgreSQL.',
+    'Run a readonly SQL query against Oracle, Microsoft SQL Server, PostgreSQL, or MySQL/MariaDB.',
     {
       connection: z.string(),
       query: z.string(),
@@ -125,7 +125,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
 
   server.tool(
     'db_count',
-    'Count rows in a SQL table (Oracle, MSSQL, or PostgreSQL). For MongoDB use db_mongo_count.',
+    'Count rows in a SQL table (Oracle, MSSQL, PostgreSQL, or MySQL/MariaDB). For MongoDB use db_mongo_count.',
     {
       connection: z.string(),
       table: z.string().describe('Table name.'),
@@ -338,7 +338,7 @@ function ok(value: unknown): { content: Array<{ type: 'text'; text: string }> } 
 }
 
 function buildSqlCountQuery(
-  dbType: 'oracle' | 'mssql' | 'postgres',
+  dbType: 'oracle' | 'mssql' | 'postgres' | 'mysql',
   schema: string | undefined,
   table: string,
   where?: string,
@@ -348,6 +348,8 @@ function buildSqlCountQuery(
     from = schema ? `[${schema}].[${table}]` : `[${table}]`;
   } else if (dbType === 'postgres') {
     from = schema ? `"${schema}"."${table}"` : `"${table}"`;
+  } else if (dbType === 'mysql') {
+    from = schema ? `\`${schema}\`.\`${table}\`` : `\`${table}\``;
   } else {
     const owner = schema?.toUpperCase();
     const tbl = table.toUpperCase();

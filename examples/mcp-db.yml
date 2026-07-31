@@ -45,3 +45,12 @@ connections:
     username: app_readonly
     passwordEnv: POSTGRES_PASSWORD
     mode: readonly
+
+  mysql_local:
+    type: mysql
+    host: localhost
+    port: 3306
+    database: appdb
+    username: app_readonly
+    passwordEnv: MYSQL_PASSWORD
+    mode: readonly

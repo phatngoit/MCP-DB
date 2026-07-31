@@ -166,3 +166,67 @@ describe('appConfigSchema — PostgreSQL connection modes', () => {
     expect((config.connections.pg as { port: number }).port).toBe(5432);
   });
 });
+
+describe('appConfigSchema — MySQL connection modes', () => {
+  it('accepts the existing structured host/database shape', () => {
+    expect(() =>
+      appConfigSchema.parse(
+        withConnections({
+          my: {
+            type: 'mysql',
+            host: 'localhost',
+            database: 'appdb',
+            username: 'app_readonly',
+            passwordEnv: 'MY_PW',
+            mode: 'readonly',
+          },
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('accepts a connectionStringEnv with no host/database/username', () => {
+    expect(() =>
+      appConfigSchema.parse(
+        withConnections({
+          my: {
+            type: 'mysql',
+            connectionStringEnv: 'MY_CONNECTION_STRING',
+            mode: 'readonly',
+          },
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('rejects a MySQL connection with neither connection string nor host+database', () => {
+    expect(() =>
+      appConfigSchema.parse(
+        withConnections({
+          my: {
+            type: 'mysql',
+            username: 'app_readonly',
+            passwordEnv: 'MY_PW',
+            mode: 'readonly',
+          },
+        }),
+      ),
+    ).toThrow();
+  });
+
+  it('defaults the port to 3306', () => {
+    const config = appConfigSchema.parse(
+      withConnections({
+        my: {
+          type: 'mysql',
+          host: 'localhost',
+          database: 'appdb',
+          username: 'app_readonly',
+          passwordEnv: 'MY_PW',
+          mode: 'readonly',
+        },
+      }),
+    );
+    expect((config.connections.my as { port: number }).port).toBe(3306);
+  });
+});

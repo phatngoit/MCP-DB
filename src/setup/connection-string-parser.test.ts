@@ -3,6 +3,7 @@ import {
   extractMongoDatabaseName,
   parseMongoConnectionString,
   parseMssqlConnectionString,
+  parseMysqlConnectionString,
   parseOracleConnectionString,
   parsePostgresConnectionString,
 } from './connection-string-parser.js';
@@ -16,6 +17,8 @@ const MSSQL_EXAMPLE =
 const MONGO_EXAMPLE = 'mongodb://demo_mongo_user:demo_mongo_pass1@10.20.30.10:27017/demo_billing_db';
 
 const POSTGRES_EXAMPLE = 'postgres://demo_pg_user:demo_pg_pass1@10.20.30.20:5432/demo_billing_db';
+
+const MYSQL_EXAMPLE = 'mysql://demo_my_user:demo_my_pass1@10.20.30.30:3306/demo_billing_db';
 
 describe('parseOracleConnectionString', () => {
   it('parses an ODP.NET connection string, keeping the descriptor intact', () => {
@@ -116,5 +119,19 @@ describe('parsePostgresConnectionString', () => {
 
   it('returns null for input with no scheme', () => {
     expect(parsePostgresConnectionString('just some random text')).toBeNull();
+  });
+});
+
+describe('parseMysqlConnectionString', () => {
+  it('accepts a mysql:// URI verbatim', () => {
+    expect(parseMysqlConnectionString(MYSQL_EXAMPLE)).toBe(MYSQL_EXAMPLE);
+  });
+
+  it('returns null for a non-mysql URI', () => {
+    expect(parseMysqlConnectionString(MONGO_EXAMPLE)).toBeNull();
+  });
+
+  it('returns null for input with no scheme', () => {
+    expect(parseMysqlConnectionString('just some random text')).toBeNull();
   });
 });

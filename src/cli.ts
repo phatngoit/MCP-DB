@@ -16,7 +16,7 @@ const program = new Command();
 
 program
   .name('mcp-db-connect')
-  .description('Universal readonly-first MCP server for Oracle, MSSQL, PostgreSQL, and MongoDB.')
+  .description('Universal readonly-first MCP server for Oracle, MSSQL, PostgreSQL, MySQL/MariaDB, and MongoDB.')
   .version(version);
 
 program

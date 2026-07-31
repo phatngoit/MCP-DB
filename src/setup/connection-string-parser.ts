@@ -104,3 +104,8 @@ export function parsePostgresConnectionString(input: string): string | null {
   const trimmed = input.trim();
   return /^postgres(ql)?:\/\/\S+/i.test(trimmed) ? trimmed : null;
 }
+
+export function parseMysqlConnectionString(input: string): string | null {
+  const trimmed = input.trim();
+  return /^mysql:\/\/\S+/i.test(trimmed) ? trimmed : null;
+}

@@ -63,12 +63,27 @@ const postgresConnectionSchema = baseConnectionSchema.extend({
   rejectUnauthorized: z.boolean().default(true),
 });
 
+const mysqlConnectionSchema = baseConnectionSchema.extend({
+  type: z.literal('mysql'),
+  host: z.string().optional(),
+  port: z.number().int().positive().default(3306),
+  database: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  passwordEnv: z.string().optional(),
+  connectionString: z.string().optional(),
+  connectionStringEnv: z.string().optional(),
+  ssl: z.boolean().default(false),
+  rejectUnauthorized: z.boolean().default(true),
+});
+
 const dbConnectionSchema = z
   .discriminatedUnion('type', [
     oracleConnectionSchema,
     mssqlConnectionSchema,
     mongoConnectionSchema,
     postgresConnectionSchema,
+    mysqlConnectionSchema,
   ])
   .superRefine((config, ctx) => {
     if (config.type === 'oracle' && !config.connectDescriptor && !config.host) {
@@ -103,6 +118,20 @@ const dbConnectionSchema = z
         code: z.ZodIssueCode.custom,
         message:
           'PostgreSQL connection requires either connectionString/connectionStringEnv, or host and database.',
+        path: ['host'],
+      });
+    }
+
+    if (
+      config.type === 'mysql' &&
+      !config.connectionString &&
+      !config.connectionStringEnv &&
+      (!config.host || !config.database)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'MySQL connection requires either connectionString/connectionStringEnv, or host and database.',
         path: ['host'],
       });
     }
