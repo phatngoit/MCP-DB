@@ -1,4 +1,4 @@
-export type ConnectionType = 'oracle' | 'mssql' | 'mongodb' | 'postgres' | 'mysql';
+export type ConnectionType = 'oracle' | 'mssql' | 'mongodb' | 'postgres' | 'mysql' | 'qdrant';
 export type AccessMode = 'readonly' | 'readwrite';
 
 export interface BaseConnectionConfig {
@@ -77,12 +77,21 @@ export interface MysqlConnectionConfig extends BaseConnectionConfig {
   rejectUnauthorized?: boolean;
 }
 
+export interface QdrantConnectionConfig extends BaseConnectionConfig {
+  type: 'qdrant';
+  url?: string;
+  urlEnv?: string;
+  apiKey?: string;
+  apiKeyEnv?: string;
+}
+
 export type DbConnectionConfig =
   | OracleConnectionConfig
   | MssqlConnectionConfig
   | MongoConnectionConfig
   | PostgresConnectionConfig
-  | MysqlConnectionConfig;
+  | MysqlConnectionConfig
+  | QdrantConnectionConfig;
 
 export interface SecurityConfig {
   defaultMaxRows: number;
@@ -197,4 +206,34 @@ export interface MongoDbConnector extends DbConnector {
   getIndexes(collection: string): Promise<MongoIndexInfo[]>;
   explainFind(input: MongoFindInput): Promise<unknown>;
   explainAggregate(input: MongoAggregateInput): Promise<unknown>;
+}
+
+export interface QdrantSearchInput {
+  collection: string;
+  vector: number[];
+  limit?: number;
+  filter?: Record<string, unknown>;
+  withPayload?: boolean;
+  scoreThreshold?: number;
+}
+
+export interface QdrantScrollInput {
+  collection: string;
+  filter?: Record<string, unknown>;
+  limit?: number;
+  withPayload?: boolean;
+  withVector?: boolean;
+}
+
+export interface QdrantCountInput {
+  collection: string;
+  filter?: Record<string, unknown>;
+}
+
+export interface QdrantDbConnector extends DbConnector {
+  listCollections(): Promise<TableInfo[]>;
+  describeCollection(collection: string): Promise<TableDescription>;
+  search(input: QdrantSearchInput): Promise<QueryResult>;
+  scroll(input: QdrantScrollInput): Promise<QueryResult>;
+  count(input: QdrantCountInput): Promise<number>;
 }

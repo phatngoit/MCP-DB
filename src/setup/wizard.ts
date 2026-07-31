@@ -10,10 +10,11 @@ import {
   parseMysqlConnectionString,
   parseOracleConnectionString,
   parsePostgresConnectionString,
+  parseQdrantUrl,
 } from './connection-string-parser.js';
 
 type AiClient = 'claude' | 'codex' | 'gemini' | 'kimi' | 'generic';
-type DatabaseType = 'oracle' | 'mssql' | 'mongodb' | 'postgres' | 'mysql';
+type DatabaseType = 'oracle' | 'mssql' | 'mongodb' | 'postgres' | 'mysql' | 'qdrant';
 
 interface SetupWizardOptions {
   projectDir: string;
@@ -97,6 +98,11 @@ const databaseChoices: Choice<DatabaseType>[] = [
     id: 'mysql',
     label: 'MySQL / MariaDB',
     description: 'Paste a connection string.',
+  },
+  {
+    id: 'qdrant',
+    label: 'Qdrant (vector search)',
+    description: 'Paste a URL and optional API key.',
   },
 ];
 
@@ -300,6 +306,40 @@ async function collectConnections(
           mode: 'readonly',
         };
         envEntries.push({ name: connectionStringEnv, value: connectionString });
+      }
+
+      if (database === 'qdrant') {
+        const name = await promptConnectionName(
+          rl,
+          defaultConnectionName(database, index),
+          connections,
+        );
+        const url = await promptConnectionString(
+          rl,
+          'Qdrant URL',
+          'http://localhost:6333',
+          parseQdrantUrl,
+        );
+        const urlEnv = envName(name, 'URL');
+        output.write(`  → URL saved as ${urlEnv} in .env\n`);
+
+        const apiKey = await promptText(rl, 'API key (leave blank if none)', '');
+
+        const connection: GeneratedConnection = {
+          type: 'qdrant',
+          urlEnv,
+          mode: 'readonly',
+        };
+        envEntries.push({ name: urlEnv, value: url });
+
+        if (apiKey) {
+          const apiKeyEnv = envName(name, 'API_KEY');
+          output.write(`  → API key saved as ${apiKeyEnv} in .env\n`);
+          connection.apiKeyEnv = apiKeyEnv;
+          envEntries.push({ name: apiKeyEnv, value: apiKey });
+        }
+
+        connections[name] = connection;
       }
 
       index += 1;
@@ -683,6 +723,7 @@ function normalizeDatabases(values: string[] | undefined): DatabaseType[] | unde
     mysql: 'mysql',
     maria: 'mysql',
     mariadb: 'mysql',
+    qdrant: 'qdrant',
   });
 }
 
@@ -756,6 +797,9 @@ function databaseLabel(database: DatabaseType): string {
   if (database === 'mysql') {
     return 'MySQL / MariaDB';
   }
+  if (database === 'qdrant') {
+    return 'Qdrant';
+  }
   return 'MongoDB';
 }
 
@@ -766,6 +810,7 @@ function defaultConnectionName(database: DatabaseType, index: number): string {
     mongodb: 'mongo_local',
     postgres: 'postgres_local',
     mysql: 'mysql_local',
+    qdrant: 'qdrant_local',
   };
   const baseName = baseNames[database];
   return index === 1 ? baseName : `${baseName}_${index}`;

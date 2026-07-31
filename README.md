@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/mcp-db-connect.svg)](https://www.npmjs.com/package/mcp-db-connect)
 [![CI](https://github.com/phatngoit/MCP-DB/actions/workflows/ci.yml/badge.svg)](https://github.com/phatngoit/MCP-DB/actions/workflows/ci.yml)
 
-Universal MCP server for readonly-first access to Oracle Database, Microsoft SQL Server, PostgreSQL, MySQL/MariaDB, and MongoDB.
+Universal MCP server for readonly-first access to Oracle Database, Microsoft SQL Server, PostgreSQL, MySQL/MariaDB, MongoDB, and Qdrant vector search.
 
 This project is designed for AI tools that support the Model Context Protocol. Projects can install it, provide a YAML config, and expose safe database tools to their AI client.
 
@@ -16,7 +16,7 @@ By default, commands run from a project directory automatically use:
 
 ## Features
 
-- Oracle, MSSQL, PostgreSQL, MySQL/MariaDB, and MongoDB connectors
+- Oracle, MSSQL, PostgreSQL, MySQL/MariaDB, MongoDB, and Qdrant connectors
 - Multiple named connections in one config file
 - Readonly by default
 - SQL multi-statement blocking
@@ -353,6 +353,12 @@ connections:
     username: app_readonly
     passwordEnv: MYSQL_PASSWORD
     mode: readonly
+
+  qdrant_local:
+    type: qdrant
+    url: http://localhost:6333
+    apiKeyEnv: QDRANT_API_KEY
+    mode: readonly
 ```
 
 MongoDB stores the selected port inside the URI saved in `.env`, for example:
@@ -441,6 +447,18 @@ PostgreSQL and MySQL/MariaDB connections also accept `ssl: true` (with `rejectUn
 - `db_mongo_explain_find` — Return an execution plan for a find operation
 - `db_mongo_explain_aggregate` — Return an execution plan for an aggregate pipeline
 
+### Qdrant (vector search)
+
+- `db_list_connections` — List configured connections
+- `db_test_connection` — Test a connection
+- `db_list_tables` — List collections
+- `db_describe_table` — Describe a collection's vector config and payload field types
+- `db_qdrant_search` — Run a vector similarity search with an optional filter and score threshold
+- `db_qdrant_scroll` — Browse or filter points without a vector search
+- `db_qdrant_count` — Count points with an optional filter
+
+`db_list_schemas` returns an empty list for Qdrant connections since Qdrant collections aren't grouped into schemas/databases.
+
 Query result tools return tables like:
 
 ```text
@@ -525,7 +543,6 @@ Use database accounts with the smallest permissions possible. The MCP layer is a
 ## Roadmap
 
 - Accept connection config via environment variables (in addition to file-based config) so this project can be hosted by Smithery.ai and similar container-based MCP platforms
-- Vector database connector (pgvector or Qdrant)
 - Configurable sample size for MongoDB `db_describe_table` (currently 20 documents)
 - OpenTelemetry tracing
 - Secrets manager integrations (AWS Secrets Manager, Azure Key Vault, HashiCorp Vault)

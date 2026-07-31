@@ -4,6 +4,7 @@ import { MongodbConnector } from '../connectors/mongodb.js';
 import { MysqlConnector } from '../connectors/mysql.js';
 import { OracleConnector } from '../connectors/oracle.js';
 import { PostgresConnector } from '../connectors/postgres.js';
+import { QdrantConnector } from '../connectors/qdrant.js';
 import { UserInputError } from './errors.js';
 
 export class ConnectorRegistry {
@@ -56,5 +57,7 @@ function createConnector(config: DbConnectionConfig): DbConnector {
       return new PostgresConnector(config);
     case 'mysql':
       return new MysqlConnector(config);
+    case 'qdrant':
+      return new QdrantConnector(config);
   }
 }

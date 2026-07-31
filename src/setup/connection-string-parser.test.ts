@@ -6,6 +6,7 @@ import {
   parseMysqlConnectionString,
   parseOracleConnectionString,
   parsePostgresConnectionString,
+  parseQdrantUrl,
 } from './connection-string-parser.js';
 
 const ORACLE_ODP_NET_EXAMPLE =
@@ -133,5 +134,25 @@ describe('parseMysqlConnectionString', () => {
 
   it('returns null for input with no scheme', () => {
     expect(parseMysqlConnectionString('just some random text')).toBeNull();
+  });
+});
+
+describe('parseQdrantUrl', () => {
+  it('accepts an http URL verbatim', () => {
+    const url = 'http://localhost:6333';
+    expect(parseQdrantUrl(url)).toBe(url);
+  });
+
+  it('accepts an https URL verbatim', () => {
+    const url = 'https://xyz-abc.aws.cloud.qdrant.io:6333';
+    expect(parseQdrantUrl(url)).toBe(url);
+  });
+
+  it('returns null for a non-http(s) URL', () => {
+    expect(parseQdrantUrl(MONGO_EXAMPLE)).toBeNull();
+  });
+
+  it('returns null for input with no scheme', () => {
+    expect(parseQdrantUrl('just some random text')).toBeNull();
   });
 });

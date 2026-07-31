@@ -109,3 +109,8 @@ export function parseMysqlConnectionString(input: string): string | null {
   const trimmed = input.trim();
   return /^mysql:\/\/\S+/i.test(trimmed) ? trimmed : null;
 }
+
+export function parseQdrantUrl(input: string): string | null {
+  const trimmed = input.trim();
+  return /^https?:\/\/\S+/i.test(trimmed) ? trimmed : null;
+}

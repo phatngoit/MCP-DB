@@ -9,9 +9,9 @@ Each connection is named. AI tools will use the name when calling MCP tools.
 
 Secrets can be provided directly, but environment variables are recommended through `passwordEnv` or `uriEnv`.
 
-Each connection owns its own network address. MSSQL, Oracle, PostgreSQL, and MySQL/MariaDB use explicit `host` and `port` fields (MSSQL, PostgreSQL, and MySQL/MariaDB also accept a full `connectionString`/`connectionStringEnv` instead). MongoDB stores host and port inside the URI referenced by `uriEnv`.
+Each connection owns its own network address. MSSQL, Oracle, PostgreSQL, and MySQL/MariaDB use explicit `host` and `port` fields (MSSQL, PostgreSQL, and MySQL/MariaDB also accept a full `connectionString`/`connectionStringEnv` instead). MongoDB stores host and port inside the URI referenced by `uriEnv`. Qdrant is a single `url`/`urlEnv` (plus an optional `apiKey`/`apiKeyEnv`) rather than host/port, since it's addressed over HTTP.
 
-You can define multiple connections for the same database type by giving each one a unique name, such as `mssql_report`, `mssql_billing`, `oracle_ftms`, `postgres_billing`, `mysql_billing`, and `mongo_logs`.
+You can define multiple connections for the same database type by giving each one a unique name, such as `mssql_report`, `mssql_billing`, `oracle_ftms`, `postgres_billing`, `mysql_billing`, `qdrant_embeddings`, and `mongo_logs`.
 
 Oracle uses the `oracledb` driver in Thin mode. Oracle Instant Client is not required.
 
@@ -100,6 +100,8 @@ ORACLE_PASSWORD=...
 MONGODB_URI=...
 POSTGRES_PASSWORD=...
 MYSQL_PASSWORD=...
+QDRANT_URL=...
+QDRANT_API_KEY=...
 ```
 
 Never commit `.env` or local config files containing production endpoints.

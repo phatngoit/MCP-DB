@@ -54,3 +54,8 @@ connections:
     username: app_readonly
     passwordEnv: MYSQL_PASSWORD
     mode: readonly
+
+  qdrant_local:
+    type: qdrant
+    url: http://localhost:6333
+    mode: readonly

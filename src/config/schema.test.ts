@@ -230,3 +230,34 @@ describe('appConfigSchema — MySQL connection modes', () => {
     expect((config.connections.my as { port: number }).port).toBe(3306);
   });
 });
+
+describe('appConfigSchema — Qdrant connection modes', () => {
+  it('accepts a urlEnv with no apiKey', () => {
+    expect(() =>
+      appConfigSchema.parse(
+        withConnections({
+          qd: {
+            type: 'qdrant',
+            urlEnv: 'QDRANT_URL',
+            mode: 'readonly',
+          },
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('accepts a url with an apiKeyEnv', () => {
+    expect(() =>
+      appConfigSchema.parse(
+        withConnections({
+          qd: {
+            type: 'qdrant',
+            url: 'http://localhost:6333',
+            apiKeyEnv: 'QDRANT_API_KEY',
+            mode: 'readonly',
+          },
+        }),
+      ),
+    ).not.toThrow();
+  });
+});

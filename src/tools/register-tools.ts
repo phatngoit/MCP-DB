@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { AppConfig, MongoDbConnector } from '../types.js';
+import type { AppConfig, MongoDbConnector, QdrantDbConnector } from '../types.js';
 import type { ConnectorRegistry } from '../core/registry.js';
 import {
   assertAllowedObject,
@@ -94,6 +94,9 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
         if (connector.type === 'mongodb') {
           throw new Error('Use db_mongo_find or db_mongo_aggregate for MongoDB.');
         }
+        if (connector.type === 'qdrant') {
+          throw new Error('Use db_qdrant_search or db_qdrant_scroll for Qdrant.');
+        }
 
         validateSqlQuery(query, config.security, connectionConfig);
         const limit = resolveLimit(config.security, connectionConfig, maxRows);
@@ -114,8 +117,8 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
       runAudited(config, connection, 'db_explain_query', 'explain_query', async () => {
         const connectionConfig = registry.getConfig(connection);
         const connector = registry.get(connection);
-        if (connector.type === 'mongodb') {
-          throw new Error('db_explain_query supports Oracle and Microsoft SQL Server only.');
+        if (connector.type === 'mongodb' || connector.type === 'qdrant') {
+          throw new Error('db_explain_query supports Oracle, Microsoft SQL Server, PostgreSQL, and MySQL/MariaDB only.');
         }
 
         validateSqlQuery(query, config.security, connectionConfig);
@@ -138,6 +141,9 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
         const connector = registry.get(connection);
         if (connector.type === 'mongodb') {
           throw new Error('Use db_mongo_count for MongoDB connections.');
+        }
+        if (connector.type === 'qdrant') {
+          throw new Error('Use db_qdrant_count for Qdrant connections.');
         }
         if (schema) {
           assertAllowedObject(schema, 'schema', connectionConfig);
@@ -306,6 +312,87 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
         }
         const plan = await (connector as MongoDbConnector).explainAggregate({ collection, pipeline });
         return JSON.stringify(plan, null, 2);
+      }),
+  );
+
+  server.tool(
+    'db_qdrant_search',
+    'Run a vector similarity search against a Qdrant collection.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      vector: z.array(z.number()).describe('Query embedding vector.'),
+      limit: z.number().int().positive().optional().describe('Max number of results (default 10).'),
+      filter: z.record(z.unknown()).optional().describe('Optional Qdrant filter object.'),
+      scoreThreshold: z.number().optional().describe('Optional minimum similarity score.'),
+    },
+    async ({ connection, collection, vector, limit, filter, scoreThreshold }) =>
+      runAudited(config, connection, 'db_qdrant_search', 'search', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'qdrant') {
+          throw new Error('db_qdrant_search requires a Qdrant connection.');
+        }
+        const resolvedLimit = resolveLimit(config.security, connectionConfig, limit);
+        const result = await (connector as QdrantDbConnector).search({
+          collection,
+          vector,
+          limit: resolvedLimit,
+          filter,
+          scoreThreshold,
+        });
+        return formatQueryResult(maskResult(result, config.security));
+      }),
+  );
+
+  server.tool(
+    'db_qdrant_scroll',
+    'Browse or filter points in a Qdrant collection without a vector search.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      filter: z.record(z.unknown()).optional().describe('Optional Qdrant filter object.'),
+      limit: z.number().int().positive().optional().describe('Max number of results (default 100).'),
+      withVector: z.boolean().optional().describe('Include the stored vector in results (default false).'),
+    },
+    async ({ connection, collection, filter, limit, withVector }) =>
+      runAudited(config, connection, 'db_qdrant_scroll', 'scroll', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'qdrant') {
+          throw new Error('db_qdrant_scroll requires a Qdrant connection.');
+        }
+        const resolvedLimit = resolveLimit(config.security, connectionConfig, limit);
+        const result = await (connector as QdrantDbConnector).scroll({
+          collection,
+          filter,
+          limit: resolvedLimit,
+          withVector,
+        });
+        return formatQueryResult(maskResult(result, config.security));
+      }),
+  );
+
+  server.tool(
+    'db_qdrant_count',
+    'Count points in a Qdrant collection with an optional filter.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      filter: z.record(z.unknown()).optional().describe('Optional Qdrant filter object.'),
+    },
+    async ({ connection, collection, filter }) =>
+      runAudited(config, connection, 'db_qdrant_count', 'count', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'qdrant') {
+          throw new Error('db_qdrant_count requires a Qdrant connection.');
+        }
+        const total = await (connector as QdrantDbConnector).count({ collection, filter });
+        return `Count: ${total}`;
       }),
   );
 }

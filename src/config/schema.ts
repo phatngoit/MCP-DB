@@ -77,6 +77,14 @@ const mysqlConnectionSchema = baseConnectionSchema.extend({
   rejectUnauthorized: z.boolean().default(true),
 });
 
+const qdrantConnectionSchema = baseConnectionSchema.extend({
+  type: z.literal('qdrant'),
+  url: z.string().optional(),
+  urlEnv: z.string().optional(),
+  apiKey: z.string().optional(),
+  apiKeyEnv: z.string().optional(),
+});
+
 const dbConnectionSchema = z
   .discriminatedUnion('type', [
     oracleConnectionSchema,
@@ -84,6 +92,7 @@ const dbConnectionSchema = z
     mongoConnectionSchema,
     postgresConnectionSchema,
     mysqlConnectionSchema,
+    qdrantConnectionSchema,
   ])
   .superRefine((config, ctx) => {
     if (config.type === 'oracle' && !config.connectDescriptor && !config.host) {
