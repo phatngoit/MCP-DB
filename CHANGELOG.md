@@ -10,6 +10,7 @@ This project follows semantic versioning.
 - Added a MySQL/MariaDB connector (`type: mysql`) with the same tool coverage, using native `?` placeholders and `EXPLAIN FORMAT=JSON` plans.
 - Setup wizard now supports PostgreSQL (`postgres://user:password@host:5432/database`) and MySQL/MariaDB (`mysql://user:password@host:3306/database`) connection strings.
 - Listed the project on the official MCP Registry (`registry.modelcontextprotocol.io`) via `server.json`, published automatically on release through GitHub Actions OIDC. Documented Glama.ai's manual-submission status and why a Smithery.ai listing is deferred until Docker support ships.
+- Fixed the root `Dockerfile`, which failed to build because it never copied `tsconfig.build.json` into the build stage. Added `CMD ["start"]`, `EXPOSE 3000`, a `.dockerignore`, an `examples/docker-compose.server.yml` example, and a release workflow job that builds and pushes the image to `ghcr.io/phatngoit/mcp-db-connect` (tagged with the release version and `latest`).
 
 ## 0.1.17
 

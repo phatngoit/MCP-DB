@@ -28,6 +28,7 @@ By default, commands run from a project directory automatically use:
 - JSONL audit logs
 - Interactive setup wizard for AI clients and database connections
 - CLI for setup, init, validation, connection testing, and stdio/HTTP server startup
+- Docker image (multi-stage `Dockerfile`, published to GHCR on release)
 
 ## Install
 
@@ -462,6 +463,46 @@ Rows: 2
 - `mcp-db-connect serve-http --host 127.0.0.1 --port 3000`
 - `mcp-db-connect serve-http --api-key-env MCP_DB_HTTP_API_KEY`
 
+## Docker
+
+A multi-stage `Dockerfile` at the repo root builds the CLI into a standalone image. The container needs your project's `mcp-db.local.yml` and `.env` mounted in, since connection config is file-based rather than baked into the image.
+
+Pull the published image (built and pushed to GHCR on every release by `.github/workflows/release.yml`):
+
+```bash
+docker pull ghcr.io/phatngoit/mcp-db-connect:latest
+```
+
+Or build it locally:
+
+```bash
+docker build -t mcp-db-connect .
+```
+
+Run over stdio (for MCP clients that exec the container directly), mounting your project config. Replace `mcp-db-connect` with `ghcr.io/phatngoit/mcp-db-connect:latest` to use the published image instead of a local build:
+
+```bash
+docker run -i --rm \
+  -v "$(pwd)/mcp-db.local.yml:/app/project/mcp-db.local.yml:ro" \
+  -v "$(pwd)/.env:/app/project/.env:ro" \
+  mcp-db-connect start --project /app/project
+```
+
+Run the Streamable HTTP transport, publishing a port:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -v "$(pwd)/mcp-db.local.yml:/app/project/mcp-db.local.yml:ro" \
+  -v "$(pwd)/.env:/app/project/.env:ro" \
+  mcp-db-connect serve-http --project /app/project --host 0.0.0.0 --port 3000
+```
+
+Or use the `examples/docker-compose.server.yml` example, which builds the image and mounts `mcp-db.local.yml`/`.env` from the current directory:
+
+```bash
+docker compose -f examples/docker-compose.server.yml up --build
+```
+
 ## Security Defaults
 
 The server is intentionally conservative:
@@ -479,11 +520,11 @@ Use database accounts with the smallest permissions possible. The MCP layer is a
 
 - **[Official MCP Registry](https://registry.modelcontextprotocol.io)** — listed as `io.github.phatngoit/mcp-db-connect` via `server.json` at the repo root. The release workflow (`.github/workflows/release.yml`) publishes to this registry automatically after every npm release using GitHub Actions OIDC (no stored token needed).
 - **[Glama.ai](https://glama.ai/mcp/servers)** — indexed by crawling this repository; submitted manually, no manifest file required.
-- **Smithery.ai** — not yet listed. Smithery's cleanest integration path expects either a hosted TypeScript entrypoint or a container image with connection details passed as environment variables, which fits better once this project ships a Docker image (see Roadmap). Listing it today against the current file-based (`mcp-db.local.yml` + `.env`) config model would be misleading, since Smithery normally runs the server itself rather than against a local project directory.
+- **Smithery.ai** — not yet listed. A Docker image now exists (`Dockerfile`, published to `ghcr.io/phatngoit/mcp-db-connect`), but Smithery hosts the container itself in its own cloud, so it cannot mount a local project's `mcp-db.local.yml`/`.env` the way `docker run -v ...` does here. Listing it cleanly requires accepting connection config through the environment variables Smithery injects (its `configSchema` mechanism) instead of only file mounts — tracked in the Roadmap.
 
 ## Roadmap
 
-- Docker image distribution, followed by a Smithery.ai container listing
+- Accept connection config via environment variables (in addition to file-based config) so this project can be hosted by Smithery.ai and similar container-based MCP platforms
 - Vector database connector (pgvector or Qdrant)
 - Configurable sample size for MongoDB `db_describe_table` (currently 20 documents)
 - OpenTelemetry tracing
