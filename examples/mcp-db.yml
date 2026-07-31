@@ -59,3 +59,8 @@ connections:
     type: qdrant
     url: http://localhost:6333
     mode: readonly
+
+  sqlite_local:
+    type: sqlite
+    file: ./data/appdb.sqlite
+    mode: readonly

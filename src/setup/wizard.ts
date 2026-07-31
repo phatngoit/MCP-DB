@@ -14,7 +14,7 @@ import {
 } from './connection-string-parser.js';
 
 type AiClient = 'claude' | 'codex' | 'gemini' | 'kimi' | 'generic';
-type DatabaseType = 'oracle' | 'mssql' | 'mongodb' | 'postgres' | 'mysql' | 'qdrant';
+type DatabaseType = 'oracle' | 'mssql' | 'mongodb' | 'postgres' | 'mysql' | 'qdrant' | 'sqlite';
 
 interface SetupWizardOptions {
   projectDir: string;
@@ -103,6 +103,11 @@ const databaseChoices: Choice<DatabaseType>[] = [
     id: 'qdrant',
     label: 'Qdrant (vector search)',
     description: 'Paste a URL and optional API key.',
+  },
+  {
+    id: 'sqlite',
+    label: 'SQLite',
+    description: 'Enter a local database file path.',
   },
 ];
 
@@ -340,6 +345,21 @@ async function collectConnections(
         }
 
         connections[name] = connection;
+      }
+
+      if (database === 'sqlite') {
+        const name = await promptConnectionName(
+          rl,
+          defaultConnectionName(database, index),
+          connections,
+        );
+        const file = await promptRequired(rl, 'SQLite file path', './data/app.db');
+
+        connections[name] = {
+          type: 'sqlite',
+          file,
+          mode: 'readonly',
+        };
       }
 
       index += 1;
@@ -724,6 +744,7 @@ function normalizeDatabases(values: string[] | undefined): DatabaseType[] | unde
     maria: 'mysql',
     mariadb: 'mysql',
     qdrant: 'qdrant',
+    sqlite: 'sqlite',
   });
 }
 
@@ -800,6 +821,9 @@ function databaseLabel(database: DatabaseType): string {
   if (database === 'qdrant') {
     return 'Qdrant';
   }
+  if (database === 'sqlite') {
+    return 'SQLite';
+  }
   return 'MongoDB';
 }
 
@@ -811,6 +835,7 @@ function defaultConnectionName(database: DatabaseType, index: number): string {
     postgres: 'postgres_local',
     mysql: 'mysql_local',
     qdrant: 'qdrant_local',
+    sqlite: 'sqlite_local',
   };
   const baseName = baseNames[database];
   return index === 1 ? baseName : `${baseName}_${index}`;

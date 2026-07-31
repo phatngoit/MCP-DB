@@ -88,7 +88,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
 
   server.tool(
     'db_query',
-    'Run a readonly SQL query against Oracle, Microsoft SQL Server, PostgreSQL, or MySQL/MariaDB.',
+    'Run a readonly SQL query against Oracle, Microsoft SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite.',
     {
       connection: z.string(),
       query: z.string(),
@@ -126,7 +126,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
         const connectionConfig = registry.getConfig(connection);
         const connector = registry.get(connection);
         if (connector.type === 'mongodb' || connector.type === 'qdrant') {
-          throw new Error('db_explain_query supports Oracle, Microsoft SQL Server, PostgreSQL, and MySQL/MariaDB only.');
+          throw new Error('db_explain_query supports Oracle, Microsoft SQL Server, PostgreSQL, MySQL/MariaDB, and SQLite only.');
         }
 
         validateSqlQuery(query, config.security, connectionConfig);
@@ -136,7 +136,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
 
   server.tool(
     'db_count',
-    'Count rows in a SQL table (Oracle, MSSQL, PostgreSQL, or MySQL/MariaDB). For MongoDB use db_mongo_count.',
+    'Count rows in a SQL table (Oracle, MSSQL, PostgreSQL, MySQL/MariaDB, or SQLite). For MongoDB use db_mongo_count.',
     {
       connection: z.string(),
       table: z.string().describe('Table name.'),
@@ -433,7 +433,7 @@ function ok(value: unknown): { content: Array<{ type: 'text'; text: string }> } 
 }
 
 function buildSqlCountQuery(
-  dbType: 'oracle' | 'mssql' | 'postgres' | 'mysql',
+  dbType: 'oracle' | 'mssql' | 'postgres' | 'mysql' | 'sqlite',
   schema: string | undefined,
   table: string,
   where?: string,
@@ -441,7 +441,7 @@ function buildSqlCountQuery(
   let from: string;
   if (dbType === 'mssql') {
     from = schema ? `[${schema}].[${table}]` : `[${table}]`;
-  } else if (dbType === 'postgres') {
+  } else if (dbType === 'postgres' || dbType === 'sqlite') {
     from = schema ? `"${schema}"."${table}"` : `"${table}"`;
   } else if (dbType === 'mysql') {
     from = schema ? `\`${schema}\`.\`${table}\`` : `\`${table}\``;

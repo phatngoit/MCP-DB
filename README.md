@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/mcp-db-connect.svg)](https://www.npmjs.com/package/mcp-db-connect)
 [![CI](https://github.com/phatngoit/MCP-DB/actions/workflows/ci.yml/badge.svg)](https://github.com/phatngoit/MCP-DB/actions/workflows/ci.yml)
 
-Universal MCP server for readonly-first access to Oracle Database, Microsoft SQL Server, PostgreSQL, MySQL/MariaDB, MongoDB, and Qdrant vector search.
+Universal MCP server for readonly-first access to Oracle Database, Microsoft SQL Server, PostgreSQL, MySQL/MariaDB, SQLite, MongoDB, and Qdrant vector search.
 
 This project is designed for AI tools that support the Model Context Protocol. Projects can install it, provide a YAML config, and expose safe database tools to their AI client.
 
@@ -16,7 +16,7 @@ By default, commands run from a project directory automatically use:
 
 ## Features
 
-- Oracle, MSSQL, PostgreSQL, MySQL/MariaDB, MongoDB, and Qdrant connectors
+- Oracle, MSSQL, PostgreSQL, MySQL/MariaDB, SQLite, MongoDB, and Qdrant connectors
 - Multiple named connections in one config file
 - Readonly by default
 - SQL multi-statement blocking
@@ -359,7 +359,14 @@ connections:
     url: http://localhost:6333
     apiKeyEnv: QDRANT_API_KEY
     mode: readonly
+
+  sqlite_local:
+    type: sqlite
+    file: ./data/appdb.sqlite
+    mode: readonly
 ```
+
+SQLite has no host/port/username — `file` is a path to the database file (relative paths resolve against the process's working directory), and `:memory:` is also accepted for an ephemeral in-process database.
 
 MongoDB stores the selected port inside the URI saved in `.env`, for example:
 
@@ -441,7 +448,7 @@ When `MCP_DB_CONFIG` is set, `--config`/`mcp-db.local.yml`/`mcp-db.yml`/`mcp-db.
 
 ## Tools
 
-### SQL (Oracle + MSSQL + PostgreSQL + MySQL/MariaDB)
+### SQL (Oracle + MSSQL + PostgreSQL + MySQL/MariaDB + SQLite)
 
 - `db_list_connections` — List configured connections
 - `db_test_connection` — Test a connection
@@ -452,7 +459,9 @@ When `MCP_DB_CONFIG` is set, `--config`/`mcp-db.local.yml`/`mcp-db.yml`/`mcp-db.
 - `db_explain_query` — Return an execution plan for a SQL query
 - `db_count` — Count rows in a table with an optional WHERE clause
 
-`db_query` and `db_explain_query` accept an optional `params` array for bind parameters. Oracle and PostgreSQL use positional binds (`:1`, `:2`, ... for Oracle; `$1`, `$2`, ... for PostgreSQL); MySQL/MariaDB uses `?` placeholders in array order; MSSQL has no positional syntax, so params are bound as named parameters `@p1`, `@p2`, ... in the same order as the array.
+`db_query` and `db_explain_query` accept an optional `params` array for bind parameters. Oracle and PostgreSQL use positional binds (`:1`, `:2`, ... for Oracle; `$1`, `$2`, ... for PostgreSQL); MySQL/MariaDB and SQLite use `?` placeholders in array order; MSSQL has no positional syntax, so params are bound as named parameters `@p1`, `@p2`, ... in the same order as the array.
+
+SQLite has no schema/database concept beyond `main` (plus any attached databases); `db_list_schemas` reflects that via `PRAGMA database_list`, and `db_explain_query` runs `EXPLAIN QUERY PLAN` rather than a cost-based plan.
 
 ### MongoDB
 

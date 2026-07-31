@@ -5,6 +5,7 @@ import { MysqlConnector } from '../connectors/mysql.js';
 import { OracleConnector } from '../connectors/oracle.js';
 import { PostgresConnector } from '../connectors/postgres.js';
 import { QdrantConnector } from '../connectors/qdrant.js';
+import { SqliteConnector } from '../connectors/sqlite.js';
 import { UserInputError } from './errors.js';
 
 export class ConnectorRegistry {
@@ -59,5 +60,7 @@ function createConnector(config: DbConnectionConfig): DbConnector {
       return new MysqlConnector(config);
     case 'qdrant':
       return new QdrantConnector(config);
+    case 'sqlite':
+      return new SqliteConnector(config);
   }
 }

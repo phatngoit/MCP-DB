@@ -1,4 +1,4 @@
-export type ConnectionType = 'oracle' | 'mssql' | 'mongodb' | 'postgres' | 'mysql' | 'qdrant';
+export type ConnectionType = 'oracle' | 'mssql' | 'mongodb' | 'postgres' | 'mysql' | 'qdrant' | 'sqlite';
 export type AccessMode = 'readonly' | 'readwrite';
 
 export interface BaseConnectionConfig {
@@ -86,13 +86,19 @@ export interface QdrantConnectionConfig extends BaseConnectionConfig {
   apiKeyEnv?: string;
 }
 
+export interface SqliteConnectionConfig extends BaseConnectionConfig {
+  type: 'sqlite';
+  file: string;
+}
+
 export type DbConnectionConfig =
   | OracleConnectionConfig
   | MssqlConnectionConfig
   | MongoConnectionConfig
   | PostgresConnectionConfig
   | MysqlConnectionConfig
-  | QdrantConnectionConfig;
+  | QdrantConnectionConfig
+  | SqliteConnectionConfig;
 
 export interface SecurityConfig {
   defaultMaxRows: number;

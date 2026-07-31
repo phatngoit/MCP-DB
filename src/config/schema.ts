@@ -86,6 +86,11 @@ const qdrantConnectionSchema = baseConnectionSchema.extend({
   apiKeyEnv: z.string().optional(),
 });
 
+const sqliteConnectionSchema = baseConnectionSchema.extend({
+  type: z.literal('sqlite'),
+  file: z.string(),
+});
+
 const dbConnectionSchema = z
   .discriminatedUnion('type', [
     oracleConnectionSchema,
@@ -94,6 +99,7 @@ const dbConnectionSchema = z
     postgresConnectionSchema,
     mysqlConnectionSchema,
     qdrantConnectionSchema,
+    sqliteConnectionSchema,
   ])
   .superRefine((config, ctx) => {
     if (config.type === 'oracle' && !config.connectDescriptor && !config.host) {

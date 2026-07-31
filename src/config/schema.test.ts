@@ -292,3 +292,32 @@ describe('appConfigSchema — MongoDB connection modes', () => {
     expect((config.connections.mg as { describeSampleSize: number }).describeSampleSize).toBe(50);
   });
 });
+
+describe('appConfigSchema — SQLite connection modes', () => {
+  it('accepts a connection with a file path', () => {
+    expect(() =>
+      appConfigSchema.parse(
+        withConnections({
+          sq: {
+            type: 'sqlite',
+            file: './data/app.db',
+            mode: 'readonly',
+          },
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('rejects a connection with no file path', () => {
+    expect(() =>
+      appConfigSchema.parse(
+        withConnections({
+          sq: {
+            type: 'sqlite',
+            mode: 'readonly',
+          },
+        }),
+      ),
+    ).toThrow();
+  });
+});
