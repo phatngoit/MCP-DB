@@ -445,10 +445,18 @@ The server is intentionally conservative:
 
 Use database accounts with the smallest permissions possible. The MCP layer is a guardrail, not a replacement for DB-level permissions.
 
+## Registries
+
+- **[Official MCP Registry](https://registry.modelcontextprotocol.io)** — listed as `io.github.phatngoit/mcp-db-connect` via `server.json` at the repo root. The release workflow (`.github/workflows/release.yml`) publishes to this registry automatically after every npm release using GitHub Actions OIDC (no stored token needed).
+- **[Glama.ai](https://glama.ai/mcp/servers)** — indexed by crawling this repository; submitted manually, no manifest file required.
+- **Smithery.ai** — not yet listed. Smithery's cleanest integration path expects either a hosted TypeScript entrypoint or a container image with connection details passed as environment variables, which fits better once this project ships a Docker image (see Roadmap). Listing it today against the current file-based (`mcp-db.local.yml` + `.env`) config model would be misleading, since Smithery normally runs the server itself rather than against a local project directory.
+
 ## Roadmap
 
 - PostgreSQL connector
 - MySQL / MariaDB connector
+- Docker image distribution, followed by a Smithery.ai container listing
+- Vector database connector (pgvector or Qdrant)
 - Configurable sample size for MongoDB `db_describe_table` (currently 20 documents)
 - OpenTelemetry tracing
 - Secrets manager integrations (AWS Secrets Manager, Azure Key Vault, HashiCorp Vault)
