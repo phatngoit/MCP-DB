@@ -6,6 +6,11 @@ This project follows semantic versioning.
 
 ## Unreleased
 
+## 0.1.21
+
+- Fixed the Docker build failing in both stages: `package.json`'s `prepare` script (`npm run build`) fires on every `npm ci`, but `tsconfig.build.json`/`src` aren't copied in yet at that point in either stage, so `tsc` errored with "path does not exist". Each stage now deletes the `prepare` script from its copy of `package.json` before running `npm ci`.
+- Replaced `server.json`'s templated streamable-http URL (`{host}`/`{port}`/`{path}`, then `{--host}`/`{--port}`/`{--path}`) with a static URL using the tool's actual defaults (`127.0.0.1:3000/mcp`) — the MCP Registry rejected both templated forms, and this only affects registry-listing metadata, not runtime behavior.
+
 ## 0.1.20
 
 - Fixed `server.json`'s streamable-http transport URL, which referenced `{host}`/`{port}`/`{path}` — the MCP Registry validates template variables against the declared argument names exactly (`--host`/`--port`/`--path`), so 0.1.19 was rejected with "reference undefined variables".

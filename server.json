@@ -7,13 +7,13 @@
     "url": "https://github.com/phatngoit/MCP-DB",
     "source": "github"
   },
-  "version": "0.1.20",
+  "version": "0.1.21",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "mcp-db-connect",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "transport": {
         "type": "stdio"
       },
@@ -55,7 +55,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "mcp-db-connect",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "transport": {
         "type": "streamable-http",
         "url": "http://127.0.0.1:3000/mcp"
