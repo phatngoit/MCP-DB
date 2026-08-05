@@ -1,6 +1,6 @@
 {
   "name": "mcp-db-connect",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "mcpName": "io.github.phatngoit/mcp-db-connect",
   "description": "Universal MCP server for readonly-first Oracle, Microsoft SQL Server, PostgreSQL, MySQL/MariaDB, SQLite, MongoDB, and Qdrant vector search access.",
   "type": "module",
