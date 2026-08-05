@@ -1,6 +1,6 @@
 {
   "name": "mcp-db-connect",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "mcpName": "io.github.phatngoit/mcp-db-connect",
   "description": "MCP server for Oracle, MSSQL, PostgreSQL, MySQL, SQLite, MongoDB, and Qdrant vector search access.",
   "type": "module",

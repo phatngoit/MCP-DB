@@ -6,6 +6,11 @@ This project follows semantic versioning.
 
 ## Unreleased
 
+## 0.1.19
+
+- Shortened the `package.json`/`server.json` description to 100 characters or fewer; the MCP Registry rejected the longer 0.1.18 text with a 422 validation error, so 0.1.18 never got listed there.
+- Installed `python3`/`make`/`g++` in the Docker runtime stage before `npm ci`, removing them afterward. `better-sqlite3`'s native binding needs `node-gyp` to compile, and `node:22-slim` ships without Python, which broke the 0.1.18 Docker image build.
+
 ## 0.1.18
 
 - Added a PostgreSQL connector (`type: postgres`) with schema/table listing, column/primary-key/foreign-key/index introspection, `EXPLAIN (FORMAT JSON)` plans, and connection-string or structured host/port config. Covered by the same `db_query`, `db_explain_query`, `db_count`, `db_list_schemas`, `db_list_tables`, and `db_describe_table` tools as Oracle and MSSQL.
