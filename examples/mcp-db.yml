@@ -36,3 +36,31 @@ connections:
     uriEnv: MONGODB_URI
     database: appdb
     mode: readonly
+
+  postgres_local:
+    type: postgres
+    host: localhost
+    port: 5432
+    database: appdb
+    username: app_readonly
+    passwordEnv: POSTGRES_PASSWORD
+    mode: readonly
+
+  mysql_local:
+    type: mysql
+    host: localhost
+    port: 3306
+    database: appdb
+    username: app_readonly
+    passwordEnv: MYSQL_PASSWORD
+    mode: readonly
+
+  qdrant_local:
+    type: qdrant
+    url: http://localhost:6333
+    mode: readonly
+
+  sqlite_local:
+    type: sqlite
+    file: ./data/appdb.sqlite
+    mode: readonly

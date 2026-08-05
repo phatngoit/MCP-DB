@@ -1,0 +1,99 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.phatngoit/mcp-db-connect",
+  "description": "Universal MCP server for readonly-first Oracle, Microsoft SQL Server, PostgreSQL, MySQL/MariaDB, SQLite, MongoDB, and Qdrant vector search access.",
+  "title": "MCP DB Connect",
+  "repository": {
+    "url": "https://github.com/phatngoit/MCP-DB",
+    "source": "github"
+  },
+  "version": "0.1.17",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "mcp-db-connect",
+      "version": "0.1.17",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "npx",
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "start"
+        },
+        {
+          "type": "named",
+          "name": "--project",
+          "description": "Project directory used for config and .env discovery.",
+          "isRequired": false
+        },
+        {
+          "type": "named",
+          "name": "--config",
+          "description": "Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.",
+          "isRequired": false
+        },
+        {
+          "type": "named",
+          "name": "--env",
+          "description": "Path to .env file.",
+          "isRequired": false
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "MCP_DB_CONFIG",
+          "description": "Full mcp-db-connect config (security + connections) as YAML or JSON. When set, file-based config discovery is skipped entirely.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    },
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "mcp-db-connect",
+      "version": "0.1.17",
+      "transport": {
+        "type": "streamable-http",
+        "url": "http://{host}:{port}{path}"
+      },
+      "runtimeHint": "npx",
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "serve-http"
+        },
+        {
+          "type": "named",
+          "name": "--host",
+          "default": "127.0.0.1",
+          "isRequired": false
+        },
+        {
+          "type": "named",
+          "name": "--port",
+          "default": "3000",
+          "format": "number",
+          "isRequired": false
+        },
+        {
+          "type": "named",
+          "name": "--path",
+          "default": "/mcp",
+          "isRequired": false
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "MCP_DB_CONFIG",
+          "description": "Full mcp-db-connect config (security + connections) as YAML or JSON. When set, file-based config discovery is skipped entirely.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

@@ -2,21 +2,30 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { execFile, spawn } from 'node:child_process';
+import { promisify } from 'node:util';
 import { Command } from 'commander';
 
-const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
+const { name: packageName, version } = createRequire(import.meta.url)('../package.json') as {
+  name: string;
+  version: string;
+};
 import dotenv from 'dotenv';
-import { loadConfig } from './config/load-config.js';
+import semver from 'semver';
+import { CONFIG_ENV_VAR, loadConfig } from './config/load-config.js';
 import { appConfigSchema } from './config/schema.js';
 import { ConnectorRegistry } from './core/registry.js';
+import { checkForUpdate, fetchLatestVersion, formatUpdateNotice } from './core/update-check.js';
 import { startHttpServer, startStdioServer } from './server.js';
 import { runSetupWizard } from './setup/wizard.js';
+
+const execFileAsync = promisify(execFile);
 
 const program = new Command();
 
 program
   .name('mcp-db-connect')
-  .description('Universal readonly-first MCP server for Oracle, MSSQL, and MongoDB.')
+  .description('Universal readonly-first MCP server for Oracle, MSSQL, PostgreSQL, MySQL/MariaDB, and MongoDB.')
   .version(version);
 
 program
@@ -24,7 +33,7 @@ program
   .description('Start the MCP server over stdio.')
   .option(
     '-c, --config <path>',
-    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml. Ignored if MCP_DB_CONFIG is set.',
   )
   .option('--env <path>', 'Path to .env file.')
   .option(
@@ -33,6 +42,7 @@ program
     process.cwd(),
   )
   .action(async (options: { config?: string; env?: string; project: string }) => {
+    notifyIfUpdateAvailable();
     const projectDir = resolveProjectDir(options.project);
     loadEnv(resolveEnvPath(options.env, projectDir));
     const config = await loadConfig(await resolveConfigPath(options.config, projectDir));
@@ -44,7 +54,7 @@ program
   .description('Start the MCP server over Streamable HTTP.')
   .option(
     '-c, --config <path>',
-    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml. Ignored if MCP_DB_CONFIG is set.',
   )
   .option('--env <path>', 'Path to .env file.')
   .option(
@@ -74,6 +84,7 @@ program
       apiKeyEnv?: string;
       allowedHosts?: string[];
     }) => {
+      notifyIfUpdateAvailable();
       const projectDir = resolveProjectDir(options.project);
       loadEnv(resolveEnvPath(options.env, projectDir));
       const config = await loadConfig(await resolveConfigPath(options.config, projectDir));
@@ -92,7 +103,7 @@ program
   .description('Validate a config file without starting the MCP server.')
   .option(
     '-c, --config <path>',
-    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml. Ignored if MCP_DB_CONFIG is set.',
   )
   .option('--project <path>', 'Project directory used for config discovery.', process.cwd())
   .action(async (options: { config?: string; project: string }) => {
@@ -105,7 +116,7 @@ program
   .description('Test every configured database connection.')
   .option(
     '-c, --config <path>',
-    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml.',
+    'Path to YAML config file. Defaults to project mcp-db.local.yml or mcp-db.yml. Ignored if MCP_DB_CONFIG is set.',
   )
   .option('--env <path>', 'Path to .env file.')
   .option(
@@ -240,6 +251,44 @@ program
     process.stdout.write(aiConfigSnippets());
   });
 
+program
+  .command('update')
+  .description(
+    'Update mcp-db-connect. Defaults to the latest version within the current 0.x minor line (a safe range, since this project has not reached 1.0.0 yet).',
+  )
+  .option('--range <range>', 'Semver range to pick the target version from (overrides the default safe range).')
+  .option('--check-only', 'Only check for an update; do not install it.')
+  .action(async (options: { range?: string; checkOnly?: boolean }) => {
+    const range = options.range ?? `^${version}`;
+    process.stdout.write(`Current version: ${version}\n`);
+    process.stdout.write(`Checking ${packageName}@${range} on npm...\n`);
+
+    const target = await fetchLatestVersion(packageName, range);
+    if (!target) {
+      process.stdout.write('No published version found matching that range.\n');
+      return;
+    }
+    if (!semver.gt(target, version)) {
+      process.stdout.write(`Already up to date (${version}).\n`);
+      return;
+    }
+
+    process.stdout.write(`Update available: ${version} -> ${target}\n`);
+    if (options.checkOnly) {
+      process.stdout.write('Run "mcp-db-connect update" (without --check-only) to install it.\n');
+      return;
+    }
+
+    const global = await isInstalledGlobally(packageName);
+    const args = global
+      ? ['install', '-g', `${packageName}@${target}`]
+      : ['install', '--save-dev', `${packageName}@${target}`];
+
+    process.stdout.write(`Running: npm ${args.join(' ')}\n`);
+    await runNpm(args);
+    process.stdout.write(`Updated to ${target}.\n`);
+  });
+
 program.parseAsync().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   process.stderr.write(`${message}\n`);
@@ -259,7 +308,11 @@ function resolveProjectDir(projectPath: string): string {
 async function resolveConfigPath(
   configPath: string | undefined,
   projectDir: string,
-): Promise<string> {
+): Promise<string | undefined> {
+  if (process.env[CONFIG_ENV_VAR]) {
+    return undefined;
+  }
+
   if (configPath) {
     return path.resolve(projectDir, configPath);
   }
@@ -273,7 +326,7 @@ async function resolveConfigPath(
   }
 
   throw new Error(
-    `No MCP DB config found in ${projectDir}. Create mcp-db.local.yml with "mcp-db-connect init" or pass --config.`,
+    `No MCP DB config found in ${projectDir}. Create mcp-db.local.yml with "mcp-db-connect init", pass --config, or set ${CONFIG_ENV_VAR}.`,
   );
 }
 
@@ -331,6 +384,56 @@ async function fileExists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Fire-and-forget background check, never awaited by callers: must not delay
+ * server startup or ever throw. Writes to stderr only — stdout carries the
+ * MCP JSON-RPC stream on the stdio transport and must stay uncontaminated.
+ */
+function notifyIfUpdateAvailable(): void {
+  checkForUpdate({ packageName, currentVersion: version })
+    .then((info) => {
+      if (info) {
+        process.stderr.write(formatUpdateNotice(info));
+      }
+    })
+    .catch(() => {
+      // Update checks are best-effort; never let a failure surface to the user.
+    });
+}
+
+async function isInstalledGlobally(name: string): Promise<boolean> {
+  try {
+    const { stdout } = await execFileAsync('npm', ['ls', '-g', name, '--json', '--depth=0']);
+    return hasDependency(stdout, name);
+  } catch (error) {
+    const stdout = (error as { stdout?: string }).stdout;
+    return stdout ? hasDependency(stdout, name) : false;
+  }
+}
+
+function hasDependency(npmLsOutput: string, name: string): boolean {
+  try {
+    const parsed = JSON.parse(npmLsOutput) as { dependencies?: Record<string, unknown> };
+    return Boolean(parsed.dependencies?.[name]);
+  } catch {
+    return false;
+  }
+}
+
+function runNpm(args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('npm', args, { stdio: 'inherit' });
+    child.on('error', reject);
+    child.on('exit', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`npm ${args.join(' ')} exited with code ${code}`));
+      }
+    });
+  });
 }
 
 async function ensureGitignore(projectDir: string, entries: string[]): Promise<void> {

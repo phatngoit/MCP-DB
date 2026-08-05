@@ -1,4 +1,4 @@
-export type ConnectionType = 'oracle' | 'mssql' | 'mongodb';
+export type ConnectionType = 'oracle' | 'mssql' | 'mongodb' | 'postgres' | 'mysql' | 'qdrant' | 'sqlite';
 export type AccessMode = 'readonly' | 'readwrite';
 
 export interface BaseConnectionConfig {
@@ -47,12 +47,58 @@ export interface MongoConnectionConfig extends BaseConnectionConfig {
   uri?: string;
   uriEnv?: string;
   database: string;
+  describeSampleSize: number;
+}
+
+export interface PostgresConnectionConfig extends BaseConnectionConfig {
+  type: 'postgres';
+  host?: string;
+  port: number;
+  database?: string;
+  username?: string;
+  password?: string;
+  passwordEnv?: string;
+  connectionString?: string;
+  connectionStringEnv?: string;
+  ssl?: boolean;
+  rejectUnauthorized?: boolean;
+}
+
+export interface MysqlConnectionConfig extends BaseConnectionConfig {
+  type: 'mysql';
+  host?: string;
+  port: number;
+  database?: string;
+  username?: string;
+  password?: string;
+  passwordEnv?: string;
+  connectionString?: string;
+  connectionStringEnv?: string;
+  ssl?: boolean;
+  rejectUnauthorized?: boolean;
+}
+
+export interface QdrantConnectionConfig extends BaseConnectionConfig {
+  type: 'qdrant';
+  url?: string;
+  urlEnv?: string;
+  apiKey?: string;
+  apiKeyEnv?: string;
+}
+
+export interface SqliteConnectionConfig extends BaseConnectionConfig {
+  type: 'sqlite';
+  file: string;
 }
 
 export type DbConnectionConfig =
   | OracleConnectionConfig
   | MssqlConnectionConfig
-  | MongoConnectionConfig;
+  | MongoConnectionConfig
+  | PostgresConnectionConfig
+  | MysqlConnectionConfig
+  | QdrantConnectionConfig
+  | SqliteConnectionConfig;
 
 export interface SecurityConfig {
   defaultMaxRows: number;
@@ -79,6 +125,7 @@ export interface ColumnInfo {
   type: string;
   nullable?: boolean;
   defaultValue?: string | null;
+  comment?: string | null;
 }
 
 export interface ForeignKeyInfo {
@@ -113,6 +160,7 @@ export interface QueryResult {
   rows: unknown[];
   rowCount: number;
   truncated: boolean;
+  nextOffset?: string | number | null;
 }
 
 export interface ExplainResult {
@@ -125,6 +173,7 @@ export interface MongoFindInput {
   filter?: Record<string, unknown>;
   projection?: Record<string, unknown>;
   sort?: Record<string, 1 | -1>;
+  skip?: number;
   maxRows?: number;
 }
 
@@ -146,13 +195,45 @@ export interface MongoIndexInfo {
   sparse?: boolean;
 }
 
+export interface MongoInsertInput {
+  collection: string;
+  documents: Record<string, unknown>[];
+}
+
+export interface MongoInsertResult {
+  insertedCount: number;
+  insertedIds: unknown[];
+}
+
+export interface MongoUpdateInput {
+  collection: string;
+  filter: Record<string, unknown>;
+  update: Record<string, unknown>;
+  many?: boolean;
+}
+
+export interface MongoUpdateResult {
+  matchedCount: number;
+  modifiedCount: number;
+}
+
+export interface MongoDeleteInput {
+  collection: string;
+  filter: Record<string, unknown>;
+  many?: boolean;
+}
+
+export interface MongoDeleteResult {
+  deletedCount: number;
+}
+
 export interface DbConnector {
   readonly type: ConnectionType;
   readonly name: string;
   testConnection(): Promise<{ ok: boolean; message: string }>;
   listSchemas(): Promise<string[]>;
   listTables(schema?: string): Promise<TableInfo[]>;
-  describeTable(schema: string | undefined, table: string): Promise<TableDescription>;
+  describeTable(schema: string | undefined, table: string, sampleSize?: number): Promise<TableDescription>;
   query(input: QueryInput): Promise<QueryResult>;
   explainQuery(input: QueryInput): Promise<ExplainResult>;
   close(): Promise<void>;
@@ -160,11 +241,45 @@ export interface DbConnector {
 
 export interface MongoDbConnector extends DbConnector {
   listCollections(): Promise<TableInfo[]>;
-  describeCollection(collection: string): Promise<TableDescription>;
+  describeCollection(collection: string, sampleSize?: number): Promise<TableDescription>;
   find(input: MongoFindInput): Promise<QueryResult>;
   aggregate(input: MongoAggregateInput): Promise<QueryResult>;
   count(input: MongoCountInput): Promise<number>;
   getIndexes(collection: string): Promise<MongoIndexInfo[]>;
   explainFind(input: MongoFindInput): Promise<unknown>;
   explainAggregate(input: MongoAggregateInput): Promise<unknown>;
+  insert(input: MongoInsertInput): Promise<MongoInsertResult>;
+  update(input: MongoUpdateInput): Promise<MongoUpdateResult>;
+  delete(input: MongoDeleteInput): Promise<MongoDeleteResult>;
+}
+
+export interface QdrantSearchInput {
+  collection: string;
+  vector: number[];
+  limit?: number;
+  filter?: Record<string, unknown>;
+  withPayload?: boolean;
+  scoreThreshold?: number;
+}
+
+export interface QdrantScrollInput {
+  collection: string;
+  filter?: Record<string, unknown>;
+  limit?: number;
+  offset?: string | number;
+  withPayload?: boolean;
+  withVector?: boolean;
+}
+
+export interface QdrantCountInput {
+  collection: string;
+  filter?: Record<string, unknown>;
+}
+
+export interface QdrantDbConnector extends DbConnector {
+  listCollections(): Promise<TableInfo[]>;
+  describeCollection(collection: string): Promise<TableDescription>;
+  search(input: QdrantSearchInput): Promise<QueryResult>;
+  scroll(input: QdrantScrollInput): Promise<QueryResult>;
+  count(input: QdrantCountInput): Promise<number>;
 }

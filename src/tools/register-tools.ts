@@ -1,9 +1,11 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { AppConfig, MongoDbConnector } from '../types.js';
+import type { AppConfig, MongoDbConnector, QdrantDbConnector } from '../types.js';
 import type { ConnectorRegistry } from '../core/registry.js';
 import {
   assertAllowedObject,
+  assertNonEmptyFilter,
+  assertWriteAllowed,
   maskResult,
   resolveLimit,
   validateMongoPipeline,
@@ -65,22 +67,30 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
       connection: z.string(),
       table: z.string(),
       schema: z.string().optional(),
+      sampleSize: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          'MongoDB only: number of sample documents used to infer column types (default: connection describeSampleSize, 20 unless configured).',
+        ),
     },
-    async ({ connection, table, schema }) =>
+    async ({ connection, table, schema, sampleSize }) =>
       runAudited(config, connection, 'db_describe_table', 'describe_table', async () => {
         const connectionConfig = registry.getConfig(connection);
         if (schema) {
           assertAllowedObject(schema, 'schema', connectionConfig);
         }
         assertAllowedObject(table, 'table', connectionConfig);
-        const desc = await registry.get(connection).describeTable(schema, table);
+        const desc = await registry.get(connection).describeTable(schema, table, sampleSize);
         return formatTableDescription(desc);
       }),
   );
 
   server.tool(
     'db_query',
-    'Run a readonly SQL query against Oracle or Microsoft SQL Server.',
+    'Run a readonly SQL query against Oracle, Microsoft SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite.',
     {
       connection: z.string(),
       query: z.string(),
@@ -93,6 +103,9 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
         const connector = registry.get(connection);
         if (connector.type === 'mongodb') {
           throw new Error('Use db_mongo_find or db_mongo_aggregate for MongoDB.');
+        }
+        if (connector.type === 'qdrant') {
+          throw new Error('Use db_qdrant_search or db_qdrant_scroll for Qdrant.');
         }
 
         validateSqlQuery(query, config.security, connectionConfig);
@@ -114,8 +127,8 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
       runAudited(config, connection, 'db_explain_query', 'explain_query', async () => {
         const connectionConfig = registry.getConfig(connection);
         const connector = registry.get(connection);
-        if (connector.type === 'mongodb') {
-          throw new Error('db_explain_query supports Oracle and Microsoft SQL Server only.');
+        if (connector.type === 'mongodb' || connector.type === 'qdrant') {
+          throw new Error('db_explain_query supports Oracle, Microsoft SQL Server, PostgreSQL, MySQL/MariaDB, and SQLite only.');
         }
 
         validateSqlQuery(query, config.security, connectionConfig);
@@ -125,7 +138,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
 
   server.tool(
     'db_count',
-    'Count rows in a SQL table (Oracle or MSSQL). For MongoDB use db_mongo_count.',
+    'Count rows in a SQL table (Oracle, MSSQL, PostgreSQL, MySQL/MariaDB, or SQLite). For MongoDB use db_mongo_count.',
     {
       connection: z.string(),
       table: z.string().describe('Table name.'),
@@ -138,6 +151,9 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
         const connector = registry.get(connection);
         if (connector.type === 'mongodb') {
           throw new Error('Use db_mongo_count for MongoDB connections.');
+        }
+        if (connector.type === 'qdrant') {
+          throw new Error('Use db_qdrant_count for Qdrant connections.');
         }
         if (schema) {
           assertAllowedObject(schema, 'schema', connectionConfig);
@@ -159,9 +175,10 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
       filter: z.record(z.unknown()).optional(),
       projection: z.record(z.unknown()).optional(),
       sort: z.record(z.union([z.literal(1), z.literal(-1)])).optional(),
+      skip: z.number().int().nonnegative().optional().describe('Number of matching documents to skip, for pagination.'),
       maxRows: z.number().int().positive().optional(),
     },
-    async ({ connection, collection, filter, projection, sort, maxRows }) =>
+    async ({ connection, collection, filter, projection, sort, skip, maxRows }) =>
       runAudited(config, connection, 'db_mongo_find', 'find', async () => {
         const connectionConfig = registry.getConfig(connection);
         assertAllowedObject(collection, 'table', connectionConfig);
@@ -175,6 +192,7 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
           filter,
           projection,
           sort,
+          skip,
           maxRows: limit,
         });
         return formatQueryResult(maskResult(result, config.security));
@@ -308,6 +326,171 @@ export function registerDbTools(server: McpServer, registry: ConnectorRegistry, 
         return JSON.stringify(plan, null, 2);
       }),
   );
+
+  server.tool(
+    'db_mongo_insert',
+    'Insert one or more documents into a MongoDB collection. Requires mode: readwrite and security.allowWriteOperations: true.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      documents: z.array(z.record(z.unknown())).min(1).describe('One or more documents to insert.'),
+    },
+    async ({ connection, collection, documents }) =>
+      runAudited(config, connection, 'db_mongo_insert', 'insert', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        assertWriteAllowed(config.security, connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'mongodb') {
+          throw new Error('db_mongo_insert requires a MongoDB connection.');
+        }
+        const result = await (connector as MongoDbConnector).insert({ collection, documents });
+        return `Inserted ${result.insertedCount} document(s). IDs: ${JSON.stringify(result.insertedIds)}`;
+      }),
+  );
+
+  server.tool(
+    'db_mongo_update',
+    'Update documents in a MongoDB collection matching a filter. Requires mode: readwrite and security.allowWriteOperations: true.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      filter: z.record(z.unknown()).describe('Non-empty MongoDB filter selecting documents to update.'),
+      update: z.record(z.unknown()).describe('MongoDB update document, e.g. { $set: { ... } }.'),
+      many: z
+        .boolean()
+        .optional()
+        .describe('Update every matching document instead of just the first (default false).'),
+    },
+    async ({ connection, collection, filter, update, many }) =>
+      runAudited(config, connection, 'db_mongo_update', 'update', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        assertWriteAllowed(config.security, connectionConfig);
+        assertNonEmptyFilter(filter);
+        const connector = registry.get(connection);
+        if (connector.type !== 'mongodb') {
+          throw new Error('db_mongo_update requires a MongoDB connection.');
+        }
+        const result = await (connector as MongoDbConnector).update({ collection, filter, update, many });
+        return `Matched ${result.matchedCount}, modified ${result.modifiedCount} document(s).`;
+      }),
+  );
+
+  server.tool(
+    'db_mongo_delete',
+    'Delete documents from a MongoDB collection matching a filter. Requires mode: readwrite and security.allowWriteOperations: true.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      filter: z.record(z.unknown()).describe('Non-empty MongoDB filter selecting documents to delete.'),
+      many: z
+        .boolean()
+        .optional()
+        .describe('Delete every matching document instead of just the first (default false).'),
+    },
+    async ({ connection, collection, filter, many }) =>
+      runAudited(config, connection, 'db_mongo_delete', 'delete', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        assertWriteAllowed(config.security, connectionConfig);
+        assertNonEmptyFilter(filter);
+        const connector = registry.get(connection);
+        if (connector.type !== 'mongodb') {
+          throw new Error('db_mongo_delete requires a MongoDB connection.');
+        }
+        const result = await (connector as MongoDbConnector).delete({ collection, filter, many });
+        return `Deleted ${result.deletedCount} document(s).`;
+      }),
+  );
+
+  server.tool(
+    'db_qdrant_search',
+    'Run a vector similarity search against a Qdrant collection.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      vector: z.array(z.number()).describe('Query embedding vector.'),
+      limit: z.number().int().positive().optional().describe('Max number of results (default 10).'),
+      filter: z.record(z.unknown()).optional().describe('Optional Qdrant filter object.'),
+      scoreThreshold: z.number().optional().describe('Optional minimum similarity score.'),
+    },
+    async ({ connection, collection, vector, limit, filter, scoreThreshold }) =>
+      runAudited(config, connection, 'db_qdrant_search', 'search', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'qdrant') {
+          throw new Error('db_qdrant_search requires a Qdrant connection.');
+        }
+        const resolvedLimit = resolveLimit(config.security, connectionConfig, limit);
+        const result = await (connector as QdrantDbConnector).search({
+          collection,
+          vector,
+          limit: resolvedLimit,
+          filter,
+          scoreThreshold,
+        });
+        return formatQueryResult(maskResult(result, config.security));
+      }),
+  );
+
+  server.tool(
+    'db_qdrant_scroll',
+    'Browse or filter points in a Qdrant collection without a vector search.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      filter: z.record(z.unknown()).optional().describe('Optional Qdrant filter object.'),
+      limit: z.number().int().positive().optional().describe('Max number of results (default 100).'),
+      offset: z
+        .union([z.string(), z.number()])
+        .optional()
+        .describe(
+          'Continuation cursor from a previous call\'s "Next offset" (omit to start from the beginning).',
+        ),
+      withVector: z.boolean().optional().describe('Include the stored vector in results (default false).'),
+    },
+    async ({ connection, collection, filter, limit, offset, withVector }) =>
+      runAudited(config, connection, 'db_qdrant_scroll', 'scroll', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'qdrant') {
+          throw new Error('db_qdrant_scroll requires a Qdrant connection.');
+        }
+        const resolvedLimit = resolveLimit(config.security, connectionConfig, limit);
+        const result = await (connector as QdrantDbConnector).scroll({
+          collection,
+          filter,
+          limit: resolvedLimit,
+          offset,
+          withVector,
+        });
+        return formatQueryResult(maskResult(result, config.security));
+      }),
+  );
+
+  server.tool(
+    'db_qdrant_count',
+    'Count points in a Qdrant collection with an optional filter.',
+    {
+      connection: z.string(),
+      collection: z.string(),
+      filter: z.record(z.unknown()).optional().describe('Optional Qdrant filter object.'),
+    },
+    async ({ connection, collection, filter }) =>
+      runAudited(config, connection, 'db_qdrant_count', 'count', async () => {
+        const connectionConfig = registry.getConfig(connection);
+        assertAllowedObject(collection, 'table', connectionConfig);
+        const connector = registry.get(connection);
+        if (connector.type !== 'qdrant') {
+          throw new Error('db_qdrant_count requires a Qdrant connection.');
+        }
+        const total = await (connector as QdrantDbConnector).count({ collection, filter });
+        return `Count: ${total}`;
+      }),
+  );
 }
 
 async function runAudited<T>(
@@ -338,7 +521,7 @@ function ok(value: unknown): { content: Array<{ type: 'text'; text: string }> } 
 }
 
 function buildSqlCountQuery(
-  dbType: 'oracle' | 'mssql',
+  dbType: 'oracle' | 'mssql' | 'postgres' | 'mysql' | 'sqlite',
   schema: string | undefined,
   table: string,
   where?: string,
@@ -346,6 +529,10 @@ function buildSqlCountQuery(
   let from: string;
   if (dbType === 'mssql') {
     from = schema ? `[${schema}].[${table}]` : `[${table}]`;
+  } else if (dbType === 'postgres' || dbType === 'sqlite') {
+    from = schema ? `"${schema}"."${table}"` : `"${table}"`;
+  } else if (dbType === 'mysql') {
+    from = schema ? `\`${schema}\`.\`${table}\`` : `\`${table}\``;
   } else {
     const owner = schema?.toUpperCase();
     const tbl = table.toUpperCase();

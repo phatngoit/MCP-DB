@@ -1,0 +1,126 @@
+name: Publish
+
+on:
+  push:
+    branches: [staging]
+  release:
+    types: [published]
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: Upgrade npm CLI (OIDC trusted publishing needs >=11.5.1)
+        run: npm install -g npm@^11.5.1
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npm pack --dry-run --cache ./.npm-cache
+
+      # --- staging: push to the staging branch publishes a throwaway prerelease ---
+      - if: github.event_name == 'push'
+        name: Compute a unique staging prerelease version
+        id: version
+        shell: bash
+        run: |
+          base_version="$(node -p "require('./package.json').version")"
+          staging_version="${base_version}-staging.${{ github.run_number }}.${{ github.run_attempt }}"
+          echo "version=$staging_version" >> "$GITHUB_OUTPUT"
+          echo "Staging version: $staging_version"
+      - if: github.event_name == 'push'
+        name: Set staging version (local to this run only, not committed)
+        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
+      - if: github.event_name == 'push'
+        name: Publish to npm under the "staging" dist-tag
+        run: npm publish --tag staging --access public
+      - if: github.event_name == 'push'
+        name: Summary
+        run: |
+          echo "### Staging publish succeeded :white_check_mark:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: \`${{ steps.version.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Install with: \`npm install mcp-db-connect@staging\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Or pin the exact build: \`npm install mcp-db-connect@${{ steps.version.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "This published under the \`staging\` npm dist-tag only — it never touches \`latest\`, so regular users (\`npm install mcp-db-connect\`) are unaffected." >> "$GITHUB_STEP_SUMMARY"
+
+      # --- release: a published GitHub release publishes the real version to "latest" ---
+      - if: github.event_name == 'release'
+        name: Check published version
+        id: package
+        shell: bash
+        run: |
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          if npm view "${name}@${version}" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "${name}@${version} is already published."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "${name}@${version} is not published yet."
+          fi
+      - if: github.event_name == 'release' && steps.package.outputs.exists == 'false'
+        name: Publish to npm
+        run: npm publish --access public
+      - if: github.event_name == 'release' && steps.package.outputs.exists == 'false'
+        name: Sync server.json version
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          node -e "
+            const fs = require('node:fs');
+            const path = 'server.json';
+            const server = JSON.parse(fs.readFileSync(path, 'utf8'));
+            server.version = process.argv[1];
+            for (const pkg of server.packages ?? []) {
+              pkg.version = process.argv[1];
+            }
+            fs.writeFileSync(path, JSON.stringify(server, null, 2) + '\n');
+          " "$version"
+      - if: github.event_name == 'release' && steps.package.outputs.exists == 'false'
+        name: Install mcp-publisher
+        shell: bash
+        run: |
+          os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_${os}_${arch}.tar.gz" | tar xz mcp-publisher
+      - if: github.event_name == 'release' && steps.package.outputs.exists == 'false'
+        name: Publish to MCP Registry
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
+
+  docker:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/mcp-db-connect:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/mcp-db-connect:latest

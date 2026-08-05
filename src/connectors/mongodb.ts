@@ -4,8 +4,14 @@ import type {
   MongoConnectionConfig,
   MongoCountInput,
   MongoDbConnector,
+  MongoDeleteInput,
+  MongoDeleteResult,
   MongoFindInput,
   MongoIndexInfo,
+  MongoInsertInput,
+  MongoInsertResult,
+  MongoUpdateInput,
+  MongoUpdateResult,
   QueryInput,
   QueryResult,
   TableDescription,
@@ -48,13 +54,18 @@ export class MongodbConnector implements MongoDbConnector {
     }));
   }
 
-  async describeTable(_schema: string | undefined, table: string): Promise<TableDescription> {
-    return this.describeCollection(table);
+  async describeTable(
+    _schema: string | undefined,
+    table: string,
+    sampleSize?: number,
+  ): Promise<TableDescription> {
+    return this.describeCollection(table, sampleSize);
   }
 
-  async describeCollection(collection: string): Promise<TableDescription> {
+  async describeCollection(collection: string, sampleSize?: number): Promise<TableDescription> {
     const db = (await this.getClient()).db(this.config.database);
-    const samples = await db.collection(collection).find({}).limit(20).toArray();
+    const limit = sampleSize ?? this.config.describeSampleSize;
+    const samples = await db.collection(collection).find({}).limit(limit).toArray();
     const columns = inferMongoColumns(samples);
     return { schema: this.config.database, name: collection, columns };
   }
@@ -77,6 +88,7 @@ export class MongodbConnector implements MongoDbConnector {
         maxTimeMS: this.config.queryTimeoutMs,
       })
       .sort(input.sort ?? {})
+      .skip(input.skip ?? 0)
       .limit(maxRows);
     const rows = await cursor.toArray();
     return { rows, rowCount: rows.length, truncated: rows.length >= maxRows };
@@ -121,6 +133,7 @@ export class MongodbConnector implements MongoDbConnector {
         maxTimeMS: this.config.queryTimeoutMs,
       })
       .sort(input.sort ?? {})
+      .skip(input.skip ?? 0)
       .limit(maxRows)
       .explain('executionStats');
   }
@@ -133,6 +146,33 @@ export class MongodbConnector implements MongoDbConnector {
       .collection(input.collection)
       .aggregate(pipeline, { maxTimeMS: this.config.queryTimeoutMs })
       .explain('executionStats');
+  }
+
+  async insert(input: MongoInsertInput): Promise<MongoInsertResult> {
+    const db = (await this.getClient()).db(this.config.database);
+    const result = await db.collection(input.collection).insertMany(input.documents);
+    return {
+      insertedCount: result.insertedCount,
+      insertedIds: Object.values(result.insertedIds),
+    };
+  }
+
+  async update(input: MongoUpdateInput): Promise<MongoUpdateResult> {
+    const db = (await this.getClient()).db(this.config.database);
+    const collection = db.collection(input.collection);
+    const result = input.many
+      ? await collection.updateMany(input.filter, input.update)
+      : await collection.updateOne(input.filter, input.update);
+    return { matchedCount: result.matchedCount, modifiedCount: result.modifiedCount };
+  }
+
+  async delete(input: MongoDeleteInput): Promise<MongoDeleteResult> {
+    const db = (await this.getClient()).db(this.config.database);
+    const collection = db.collection(input.collection);
+    const result = input.many
+      ? await collection.deleteMany(input.filter)
+      : await collection.deleteOne(input.filter);
+    return { deletedCount: result.deletedCount ?? 0 };
   }
 
   async close(): Promise<void> {

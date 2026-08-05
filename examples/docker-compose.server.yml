@@ -1,0 +1,30 @@
+services:
+  mcp-db-connect:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    image: mcp-db-connect:local
+    command:
+      [
+        "serve-http",
+        "--project",
+        "/app/project",
+        "--config",
+        "/app/project/mcp-db.local.yml",
+        "--env",
+        "/app/project/.env",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "3000",
+      ]
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./mcp-db.local.yml:/app/project/mcp-db.local.yml:ro
+      - ./.env:/app/project/.env:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10

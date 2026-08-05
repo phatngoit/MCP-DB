@@ -9,6 +9,10 @@ export function formatQueryResult(result: QueryResult): string {
     rowsToMarkdownTable(result.rows),
   ];
 
+  if (result.nextOffset !== undefined && result.nextOffset !== null) {
+    lines.push('', `Next offset: ${result.nextOffset}`);
+  }
+
   return lines.join('\n');
 }
 
@@ -134,7 +138,11 @@ export function formatTableDescription(desc: TableDescription): string {
   }
 
   sections.push('**Columns**\n');
-  sections.push(rowsToMarkdownTable(desc.columns as unknown as Record<string, unknown>[]));
+  const hasComments = desc.columns.some((column) => column.comment);
+  const columnRows = hasComments
+    ? desc.columns
+    : desc.columns.map(({ comment: _comment, ...rest }) => rest);
+  sections.push(rowsToMarkdownTable(columnRows as unknown as Record<string, unknown>[]));
 
   if (desc.primaryKeys?.length) {
     sections.push(`\n**Primary Keys**\n`);

@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/mcp-db-connect.svg)](https://www.npmjs.com/package/mcp-db-connect)
 [![CI](https://github.com/phatngoit/MCP-DB/actions/workflows/ci.yml/badge.svg)](https://github.com/phatngoit/MCP-DB/actions/workflows/ci.yml)
 
-Universal MCP server for readonly-first access to Oracle Database, Microsoft SQL Server, and MongoDB.
+Universal MCP server for readonly-first access to Oracle Database, Microsoft SQL Server, PostgreSQL, MySQL/MariaDB, SQLite, MongoDB, and Qdrant vector search.
 
 This project is designed for AI tools that support the Model Context Protocol. Projects can install it, provide a YAML config, and expose safe database tools to their AI client.
 
@@ -16,7 +16,7 @@ By default, commands run from a project directory automatically use:
 
 ## Features
 
-- Oracle, MSSQL, and MongoDB connectors
+- Oracle, MSSQL, PostgreSQL, MySQL/MariaDB, SQLite, MongoDB, and Qdrant connectors
 - Multiple named connections in one config file
 - Readonly by default
 - SQL multi-statement blocking
@@ -28,6 +28,7 @@ By default, commands run from a project directory automatically use:
 - JSONL audit logs
 - Interactive setup wizard for AI clients and database connections
 - CLI for setup, init, validation, connection testing, and stdio/HTTP server startup
+- Docker image (multi-stage `Dockerfile`, published to GHCR on release)
 
 ## Install
 
@@ -334,7 +335,38 @@ connections:
     uriEnv: MONGODB_URI
     database: appdb
     mode: readonly
+
+  postgres_local:
+    type: postgres
+    host: localhost
+    port: 5432
+    database: appdb
+    username: app_readonly
+    passwordEnv: POSTGRES_PASSWORD
+    mode: readonly
+
+  mysql_local:
+    type: mysql
+    host: localhost
+    port: 3306
+    database: appdb
+    username: app_readonly
+    passwordEnv: MYSQL_PASSWORD
+    mode: readonly
+
+  qdrant_local:
+    type: qdrant
+    url: http://localhost:6333
+    apiKeyEnv: QDRANT_API_KEY
+    mode: readonly
+
+  sqlite_local:
+    type: sqlite
+    file: ./data/appdb.sqlite
+    mode: readonly
 ```
+
+SQLite has no host/port/username — `file` is a path to the database file (relative paths resolve against the process's working directory), and `:memory:` is also accepted for an ephemeral in-process database.
 
 MongoDB stores the selected port inside the URI saved in `.env`, for example:
 
@@ -362,7 +394,7 @@ Oracle Instant Client is not required. If the database has `NCHAR`/`NVARCHAR2` c
 
 ### Connection strings instead of individual fields
 
-Oracle and MSSQL also accept a raw connection string instead of `host`/`port`/`database`/`username`:
+Oracle, MSSQL, PostgreSQL, and MySQL/MariaDB also accept a raw connection string instead of `host`/`port`/`database`/`username`:
 
 ```yaml
 connections:
@@ -377,24 +409,61 @@ connections:
     username: demo_ora_user
     passwordEnv: ORACLE_FROM_STRING_PASSWORD
     mode: readonly
+
+  postgres_from_string:
+    type: postgres
+    connectionStringEnv: POSTGRES_FROM_STRING_CONNECTION_STRING
+    mode: readonly
+
+  mysql_from_string:
+    type: mysql
+    connectionStringEnv: MYSQL_FROM_STRING_CONNECTION_STRING
+    mode: readonly
 ```
 
-`connectionStringEnv` points to a full ADO/tedious connection string in `.env` (same convention as MongoDB's `uriEnv`). `connectDescriptor` holds an Oracle TNS connect descriptor or Easy Connect string and is not secret — only the password goes in `.env`. The setup wizard generates these automatically from a pasted connection string; both forms can also still be hand-written using the structured `host`/`port`/... fields shown above.
+`connectionStringEnv` points to a full ADO/tedious connection string (MSSQL), a `postgres://user:password@host:5432/database` URI (PostgreSQL), or a `mysql://user:password@host:3306/database` URI (MySQL/MariaDB) in `.env` (same convention as MongoDB's `uriEnv`). `connectDescriptor` holds an Oracle TNS connect descriptor or Easy Connect string and is not secret — only the password goes in `.env`. The setup wizard generates these automatically from a pasted connection string; both forms can also still be hand-written using the structured `host`/`port`/... fields shown above.
+
+PostgreSQL and MySQL/MariaDB connections also accept `ssl: true` (with `rejectUnauthorized: false` for self-signed certificates common on managed database providers).
+
+### Config via environment variable
+
+Every command that loads config (`start`, `serve-http`, `validate-config`, `test-connections`) also accepts the entire config document — the same `security` + `connections` structure normally stored in `mcp-db.local.yml` — as YAML or JSON in the `MCP_DB_CONFIG` environment variable, instead of a file:
+
+```bash
+export MCP_DB_CONFIG='
+connections:
+  postgres_demo:
+    type: postgres
+    host: db.example.com
+    port: 5432
+    database: appdb
+    username: app_readonly
+    password: change-me
+    mode: readonly
+'
+mcp-db-connect serve-http --host 0.0.0.0 --port 3000
+```
+
+When `MCP_DB_CONFIG` is set, `--config`/`mcp-db.local.yml`/`mcp-db.yml`/`mcp-db.yaml` file discovery is skipped entirely — no file needs to exist. This is what lets container platforms that can't mount a project file into the container (Smithery.ai and similar hosted MCP platforms) run this server: they inject the whole config as one environment variable instead. Secrets can be embedded directly (as `password:`/`connectionString:` above) or still indirected through their own env var via `passwordEnv`/`connectionStringEnv`/etc. — both forms keep working exactly as they do with a file.
 
 ## Tools
 
-### SQL (Oracle + MSSQL)
+### SQL (Oracle + MSSQL + PostgreSQL + MySQL/MariaDB + SQLite)
 
 - `db_list_connections` — List configured connections
 - `db_test_connection` — Test a connection
 - `db_list_schemas` — List schemas
 - `db_list_tables` — List tables
-- `db_describe_table` — Describe columns, primary keys, foreign keys, and indexes
+- `db_describe_table` — Describe columns (including catalog comments where available), primary keys, foreign keys, and indexes
 - `db_query` — Run a readonly SQL query
 - `db_explain_query` — Return an execution plan for a SQL query
 - `db_count` — Count rows in a table with an optional WHERE clause
 
-`db_query` and `db_explain_query` accept an optional `params` array for bind parameters. Oracle uses positional binds (`:1`, `:2`, ...); MSSQL has no positional syntax, so params are bound as named parameters `@p1`, `@p2`, ... in the same order as the array.
+`db_query` and `db_explain_query` accept an optional `params` array for bind parameters. Oracle and PostgreSQL use positional binds (`:1`, `:2`, ... for Oracle; `$1`, `$2`, ... for PostgreSQL); MySQL/MariaDB and SQLite use `?` placeholders in array order; MSSQL has no positional syntax, so params are bound as named parameters `@p1`, `@p2`, ... in the same order as the array.
+
+SQLite has no schema/database concept beyond `main` (plus any attached databases); `db_list_schemas` reflects that via `PRAGMA database_list`, and `db_explain_query` runs `EXPLAIN QUERY PLAN` rather than a cost-based plan.
+
+`db_describe_table` includes each column's catalog comment/description when the database has one set (Oracle `all_col_comments`, PostgreSQL `COMMENT ON COLUMN`, MySQL/MariaDB `COLUMN_COMMENT`, MSSQL `MS_Description` extended property) — the `comment` column in the output is only shown when at least one column actually has one. SQLite has no comment mechanism, so it's never populated there.
 
 ### MongoDB
 
@@ -409,6 +478,39 @@ connections:
 - `db_mongo_get_indexes` — List indexes for a collection
 - `db_mongo_explain_find` — Return an execution plan for a find operation
 - `db_mongo_explain_aggregate` — Return an execution plan for an aggregate pipeline
+- `db_mongo_insert` — Insert one or more documents
+- `db_mongo_update` — Update documents matching a filter (`many: true` for all matches, otherwise just the first)
+- `db_mongo_delete` — Delete documents matching a filter (`many: true` for all matches, otherwise just the first)
+
+`db_mongo_insert`/`db_mongo_update`/`db_mongo_delete` are blocked unless the connection has `mode: readwrite` **and** `security.allowWriteOperations: true` — mirroring how write SQL statements are gated for the SQL connectors. `db_mongo_update` and `db_mongo_delete` also require a non-empty `filter`, so a mistaken `{}` can't silently update or delete an entire collection.
+
+`db_describe_table` infers MongoDB column types by sampling documents. The sample size defaults to 20 and can be set per-connection with `describeSampleSize`, or overridden per call with the tool's `sampleSize` argument:
+
+```yaml
+connections:
+  mongo_local:
+    type: mongodb
+    uriEnv: MONGODB_URI
+    database: appdb
+    describeSampleSize: 100
+    mode: readonly
+```
+
+`db_mongo_find` accepts an optional `skip` for pagination (skip the first N matching documents, then apply `maxRows` as the page size).
+
+### Qdrant (vector search)
+
+- `db_list_connections` — List configured connections
+- `db_test_connection` — Test a connection
+- `db_list_tables` — List collections
+- `db_describe_table` — Describe a collection's vector config and payload field types
+- `db_qdrant_search` — Run a vector similarity search with an optional filter and score threshold
+- `db_qdrant_scroll` — Browse or filter points without a vector search
+- `db_qdrant_count` — Count points with an optional filter
+
+`db_list_schemas` returns an empty list for Qdrant connections since Qdrant collections aren't grouped into schemas/databases.
+
+`db_qdrant_scroll` supports paging through an entire collection: each response includes a `Next offset` line when more points remain — pass that value back as the `offset` argument on the next call to continue. Omit `offset` to start from the beginning.
 
 Query result tools return tables like:
 
@@ -431,6 +533,70 @@ Rows: 2
 - `mcp-db-connect start`
 - `mcp-db-connect serve-http --host 127.0.0.1 --port 3000`
 - `mcp-db-connect serve-http --api-key-env MCP_DB_HTTP_API_KEY`
+- `mcp-db-connect update`
+
+## Updating
+
+`start` and `serve-http` check npm once a day (cached, non-blocking, silently skipped if offline) for a newer version and print a notice to stderr if one is available — this never touches stdout, so it's safe on the stdio transport. The check only looks within `^<your current version>`, i.e. the current `0.x` minor line (for example, `0.1.17` only considers `0.1.18`, `0.1.19`, ... — never `0.2.0`). This project hasn't reached `1.0.0` yet, so a minor version bump could still contain breaking changes; the narrower range avoids silently jumping into one.
+
+Run the update yourself with:
+
+```bash
+mcp-db-connect update              # checks and installs, if available
+mcp-db-connect update --check-only # only checks, doesn't install
+mcp-db-connect update --range "^0.2.0"  # override the range, e.g. to opt into a new minor line deliberately
+```
+
+It detects whether the package is installed globally or as a local project dependency and runs the matching `npm install` command. There is no fully silent background auto-install — updating always requires this one explicit command (or your own `npm install -g mcp-db-connect@latest` / `npm install --save-dev mcp-db-connect@latest`).
+
+## Docker
+
+A multi-stage `Dockerfile` at the repo root builds the CLI into a standalone image. The container needs your project's `mcp-db.local.yml` and `.env` mounted in, since connection config is file-based rather than baked into the image.
+
+Pull the published image (built and pushed to GHCR on every release by `.github/workflows/release.yml`):
+
+```bash
+docker pull ghcr.io/phatngoit/mcp-db-connect:latest
+```
+
+Or build it locally:
+
+```bash
+docker build -t mcp-db-connect .
+```
+
+Run over stdio (for MCP clients that exec the container directly), mounting your project config. Replace `mcp-db-connect` with `ghcr.io/phatngoit/mcp-db-connect:latest` to use the published image instead of a local build:
+
+```bash
+docker run -i --rm \
+  -v "$(pwd)/mcp-db.local.yml:/app/project/mcp-db.local.yml:ro" \
+  -v "$(pwd)/.env:/app/project/.env:ro" \
+  mcp-db-connect start --project /app/project
+```
+
+Run the Streamable HTTP transport, publishing a port:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -v "$(pwd)/mcp-db.local.yml:/app/project/mcp-db.local.yml:ro" \
+  -v "$(pwd)/.env:/app/project/.env:ro" \
+  mcp-db-connect serve-http --project /app/project --host 0.0.0.0 --port 3000
+```
+
+Or use the `examples/docker-compose.server.yml` example, which builds the image and mounts `mcp-db.local.yml`/`.env` from the current directory:
+
+```bash
+docker compose -f examples/docker-compose.server.yml up --build
+```
+
+### Hosting on a cloud/container platform
+
+No file mount is required if you set `MCP_DB_CONFIG` instead (see [Config via environment variable](#config-via-environment-variable)). The image's entrypoint (`docker-entrypoint.sh`) also auto-switches from stdio to the Streamable HTTP transport when a `PORT` environment variable is present — the convention used by Smithery.ai, Railway, Render, Fly.io, and similar platforms — binding to `0.0.0.0:$PORT` without any command override:
+
+```bash
+docker run -e PORT=8080 -e MCP_DB_CONFIG="$(cat mcp-db.local.yml)" -p 8080:8080 \
+  ghcr.io/phatngoit/mcp-db-connect:latest
+```
 
 ## Security Defaults
 
@@ -439,16 +605,20 @@ The server is intentionally conservative:
 - Connections default to `readonly`
 - SQL write and DDL keywords are blocked unless global and connection config allow writes
 - SQL multi-statement execution is blocked
-- MongoDB aggregate write stages are blocked
+- MongoDB aggregate write stages and `db_mongo_insert`/`db_mongo_update`/`db_mongo_delete` are blocked unless global and connection config allow writes
+- `db_mongo_update`/`db_mongo_delete` require a non-empty filter, so they can't accidentally affect an entire collection
 - Result rows are capped by config
 - Sensitive fields are masked recursively
 
 Use database accounts with the smallest permissions possible. The MCP layer is a guardrail, not a replacement for DB-level permissions.
 
+## Registries
+
+- **[Official MCP Registry](https://registry.modelcontextprotocol.io)** — listed as `io.github.phatngoit/mcp-db-connect` via `server.json` at the repo root. The release workflow (`.github/workflows/release.yml`) publishes to this registry automatically after every npm release using GitHub Actions OIDC (no stored token needed).
+- **[Glama.ai](https://glama.ai/mcp/servers)** — indexed by crawling this repository; submitted manually, no manifest file required.
+- **Smithery.ai** — not yet submitted. The blockers are resolved: a `Dockerfile` (published to `ghcr.io/phatngoit/mcp-db-connect`), a `smithery.yaml` container-runtime manifest at the repo root, `MCP_DB_CONFIG` env-var config (no file mount needed), and a `PORT`-aware entrypoint that switches to the HTTP transport automatically. Submitting still requires a one-time manual step — connecting this repo through Smithery's GitHub App at `smithery.ai/new` — and `smithery.yaml`'s exact fields should be double-checked against Smithery's current docs first, since they weren't independently verifiable while writing it.
+
 ## Roadmap
 
-- PostgreSQL connector
-- MySQL / MariaDB connector
-- Configurable sample size for MongoDB `db_describe_table` (currently 20 documents)
 - OpenTelemetry tracing
 - Secrets manager integrations (AWS Secrets Manager, Azure Key Vault, HashiCorp Vault)

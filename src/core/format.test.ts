@@ -29,6 +29,25 @@ describe('query result formatting', () => {
     expect(output).toContain('line 1 line 2');
   });
 
+  it('appends a Next offset line when nextOffset is present', () => {
+    const output = formatQueryResult({
+      rows: [{ id: 1 }],
+      rowCount: 1,
+      truncated: true,
+      nextOffset: 42,
+    });
+
+    expect(output).toContain('Next offset: 42');
+  });
+
+  it('omits the Next offset line when nextOffset is null or absent', () => {
+    const withNull = formatQueryResult({ rows: [], rowCount: 0, truncated: false, nextOffset: null });
+    const withoutField = formatQueryResult({ rows: [], rowCount: 0, truncated: false });
+
+    expect(withNull).not.toContain('Next offset');
+    expect(withoutField).not.toContain('Next offset');
+  });
+
   it('formats circular object cells without throwing', () => {
     const value: Record<string, unknown> = { name: 'oracle-object' };
     value.self = value;
@@ -94,5 +113,28 @@ describe('listing formatters', () => {
     });
     expect(output).toContain('Table: **products**');
     expect(output).toContain('| sku | TEXT |');
+  });
+
+  it('includes a comment column when at least one column has a comment', () => {
+    const output = formatTableDescription({
+      name: 'users',
+      columns: [
+        { name: 'id', type: 'INT', comment: 'Primary key' },
+        { name: 'email', type: 'TEXT', comment: null },
+      ],
+    });
+    expect(output).toContain('| name | type | comment |');
+    expect(output).toContain('| id | INT | Primary key |');
+  });
+
+  it('omits the comment column entirely when no column has one', () => {
+    const output = formatTableDescription({
+      name: 'users',
+      columns: [
+        { name: 'id', type: 'INT', comment: null },
+        { name: 'email', type: 'TEXT' },
+      ],
+    });
+    expect(output).not.toContain('comment');
   });
 });
