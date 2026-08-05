@@ -1,7 +1,8 @@
 FROM node:22-slim AS build
 WORKDIR /app
 COPY package*.json ./
-RUN apt-get update \
+RUN npm pkg delete scripts.prepare \
+  && apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ \
   && npm ci \
   && apt-get purge -y --auto-remove python3 make g++ \
@@ -14,7 +15,8 @@ FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package*.json ./
-RUN apt-get update \
+RUN npm pkg delete scripts.prepare \
+  && apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ \
   && npm ci --omit=dev \
   && apt-get purge -y --auto-remove python3 make g++ \

@@ -58,7 +58,7 @@
       "version": "0.1.20",
       "transport": {
         "type": "streamable-http",
-        "url": "http://{--host}:{--port}{--path}"
+        "url": "http://127.0.0.1:3000/mcp"
       },
       "runtimeHint": "npx",
       "packageArguments": [
