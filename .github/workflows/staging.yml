@@ -17,6 +17,12 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
       - run: npm ci
+      - name: Diagnose npm auth (temporary)
+        run: |
+          echo "npm registry: $(npm config get registry)"
+          npm whoami || echo "npm whoami failed (see error above)"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
