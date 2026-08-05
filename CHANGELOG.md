@@ -6,6 +6,11 @@ This project follows semantic versioning.
 
 ## Unreleased
 
+## 0.1.20
+
+- Fixed `server.json`'s streamable-http transport URL, which referenced `{host}`/`{port}`/`{path}` — the MCP Registry validates template variables against the declared argument names exactly (`--host`/`--port`/`--path`), so 0.1.19 was rejected with "reference undefined variables".
+- Fixed the Dockerfile's first build stage (`npm ci`, no `--omit=dev`) missing `python3`/`make`/`g++`, needed to compile `better-sqlite3`'s native binding — the 0.1.18 fix only covered the second (runtime) stage's `npm ci --omit=dev`.
+
 ## 0.1.19
 
 - Shortened the `package.json`/`server.json` description to 100 characters or fewer; the MCP Registry rejected the longer 0.1.18 text with a 422 validation error, so 0.1.18 never got listed there.
