@@ -28,7 +28,7 @@ export interface HttpServerOptions {
 }
 
 export async function startStdioServer(config: AppConfig): Promise<void> {
-  const logger = pino({ level: process.env.LOG_LEVEL ?? 'info' });
+  const logger = createLogger();
   const registry = new ConnectorRegistry(config);
   const server = createServer(config, registry);
 
@@ -53,7 +53,7 @@ export async function startHttpServer(
   config: AppConfig,
   options: HttpServerOptions,
 ): Promise<void> {
-  const logger = pino({ level: process.env.LOG_LEVEL ?? 'info' });
+  const logger = createLogger();
   const registry = new ConnectorRegistry(config);
   const app = createMcpExpressApp({
     host: options.host,
@@ -156,6 +156,15 @@ export async function startHttpServer(
   process.once('SIGTERM', () => {
     void shutdown();
   });
+}
+
+/**
+ * Always logs to stderr (fd 2), regardless of LOG_LEVEL, so a forgotten
+ * LOG_LEVEL=silent can't let log output corrupt the stdio transport's
+ * stdout JSON-RPC stream. LOG_LEVEL still controls verbosity as before.
+ */
+function createLogger(): pino.Logger {
+  return pino({ level: process.env.LOG_LEVEL ?? 'info' }, pino.destination(2));
 }
 
 function createServer(config: AppConfig, registry: ConnectorRegistry): McpServer {
