@@ -58,7 +58,7 @@
       "version": "0.1.17",
       "transport": {
         "type": "streamable-http",
-        "url": "http://{host}:{port}{path}"
+        "url": "http://{--host}:{--port}{--path}"
       },
       "runtimeHint": "npx",
       "packageArguments": [
