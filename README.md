@@ -537,7 +537,7 @@ Rows: 2
 
 ## Updating
 
-`start` and `serve-http` check npm once a day (cached, non-blocking, silently skipped if offline) for a newer version and print a notice to stderr if one is available — this never touches stdout, so it's safe on the stdio transport. The check only looks within `^<your current version>`, i.e. the current `0.x` minor line (for example, `0.1.17` only considers `0.1.18`, `0.1.19`, ... — never `0.2.0`). This project hasn't reached `1.0.0` yet, so a minor version bump could still contain breaking changes; the narrower range avoids silently jumping into one.
+`start` and `serve-http` check npm once a day (cached, non-blocking, silently skipped if offline) for a newer version and print a notice to stderr if one is available — this never touches stdout, so it's safe on the stdio transport. The check only looks within `^<your current version>`, i.e. the current `0.x` minor line (for example, `0.1.20` only considers `0.1.21`, `0.1.22`, ... — never `0.2.0`). This project hasn't reached `1.0.0` yet, so a minor version bump could still contain breaking changes; the narrower range avoids silently jumping into one.
 
 Run the update yourself with:
 
