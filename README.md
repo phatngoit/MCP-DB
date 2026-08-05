@@ -533,6 +533,21 @@ Rows: 2
 - `mcp-db-connect start`
 - `mcp-db-connect serve-http --host 127.0.0.1 --port 3000`
 - `mcp-db-connect serve-http --api-key-env MCP_DB_HTTP_API_KEY`
+- `mcp-db-connect update`
+
+## Updating
+
+`start` and `serve-http` check npm once a day (cached, non-blocking, silently skipped if offline) for a newer version and print a notice to stderr if one is available — this never touches stdout, so it's safe on the stdio transport. The check only looks within `^<your current version>`, i.e. the current `0.x` minor line (for example, `0.1.17` only considers `0.1.18`, `0.1.19`, ... — never `0.2.0`). This project hasn't reached `1.0.0` yet, so a minor version bump could still contain breaking changes; the narrower range avoids silently jumping into one.
+
+Run the update yourself with:
+
+```bash
+mcp-db-connect update              # checks and installs, if available
+mcp-db-connect update --check-only # only checks, doesn't install
+mcp-db-connect update --range "^0.2.0"  # override the range, e.g. to opt into a new minor line deliberately
+```
+
+It detects whether the package is installed globally or as a local project dependency and runs the matching `npm install` command. There is no fully silent background auto-install — updating always requires this one explicit command (or your own `npm install -g mcp-db-connect@latest` / `npm install --save-dev mcp-db-connect@latest`).
 
 ## Docker
 
